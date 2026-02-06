@@ -1,0 +1,7 @@
+node_modules/
+audio/*.mp3
+audio/*.wav
+audio/*.txt
+.env
+*.log
+.DS_Store
