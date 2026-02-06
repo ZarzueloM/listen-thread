@@ -23,8 +23,8 @@ async function scrapeThread(url) {
     // Navigate to the tweet
     await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
 
-    // Wait for tweets to load
-    await page.waitForTimeout(3000);
+    // Wait for tweets to load by waiting for the tweet element
+    await page.waitForSelector('[data-testid="tweet"]', { timeout: 10000 });
 
     // Extract the username from the first tweet (OP)
     const opUsername = await page.evaluate(() => {

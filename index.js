@@ -14,9 +14,10 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/audio', express.static('audio'));
 
-// Ensure audio directory exists
-if (!fs.existsSync('./audio')) {
-  fs.mkdirSync('./audio');
+// Ensure audio directory exists using absolute path
+const audioDir = path.join(__dirname, 'audio');
+if (!fs.existsSync(audioDir)) {
+  fs.mkdirSync(audioDir);
 }
 
 // API endpoint to process tweet thread

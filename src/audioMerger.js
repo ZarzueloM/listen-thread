@@ -1,6 +1,7 @@
 const ffmpeg = require('fluent-ffmpeg');
 const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 /**
  * Merges multiple audio files into a single file
@@ -9,7 +10,8 @@ const path = require('path');
  */
 async function mergeAudioFiles(audioFiles) {
   return new Promise((resolve, reject) => {
-    const outputFile = path.join(__dirname, '..', 'audio', `merged_${Date.now()}.mp3`);
+    const uniqueId = uuidv4();
+    const outputFile = path.join(__dirname, '..', 'audio', `merged_${uniqueId}.mp3`);
     
     if (audioFiles.length === 0) {
       reject(new Error('No audio files to merge'));
@@ -23,9 +25,9 @@ async function mergeAudioFiles(audioFiles) {
       return;
     }
 
-    // Create a concat file for ffmpeg
-    const concatFile = path.join(__dirname, '..', 'audio', `concat_${Date.now()}.txt`);
-    const concatContent = audioFiles.map(file => `file '${path.basename(file)}'`).join('\n');
+    // Create a concat file for ffmpeg with absolute paths
+    const concatFile = path.join(__dirname, '..', 'audio', `concat_${uniqueId}.txt`);
+    const concatContent = audioFiles.map(file => `file '${path.resolve(file)}'`).join('\n');
     fs.writeFileSync(concatFile, concatContent);
 
     // Use ffmpeg to concatenate audio files

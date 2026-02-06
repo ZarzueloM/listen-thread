@@ -13,7 +13,7 @@ Convierte hilos de Twitter/X a audio mediante text-to-speech.
 
 ## Requisitos
 
-- Node.js (v14 o superior)
+- Node.js (v18 o superior)
 - FFmpeg (para procesamiento de audio)
 - (Opcional) Credenciales de Google Cloud Text-to-Speech
 

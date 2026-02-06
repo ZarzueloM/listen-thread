@@ -2,6 +2,7 @@ const textToSpeechLib = require('@google-cloud/text-to-speech');
 const fs = require('fs');
 const util = require('util');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 // Note: For Google Cloud TTS, you need to set up credentials
 // This is a fallback implementation that can work without credentials
@@ -14,7 +15,8 @@ const path = require('path');
  * @returns {Promise<string>} - Path to the generated audio file
  */
 async function textToSpeech(text, index) {
-  const outputFile = path.join(__dirname, '..', 'audio', `chunk_${index}_${Date.now()}.mp3`);
+  const uniqueId = uuidv4();
+  const outputFile = path.join(__dirname, '..', 'audio', `chunk_${index}_${uniqueId}.mp3`);
 
   try {
     // Check if Google Cloud credentials are available
@@ -42,22 +44,22 @@ async function textToSpeech(text, index) {
     } else {
       // Fallback: Create a simple implementation using espeak or festival
       // For now, we'll use a system command approach
-      const { exec } = require('child_process');
+      const { execFile } = require('child_process');
       const { promisify } = require('util');
-      const execPromise = promisify(exec);
+      const execFilePromise = promisify(execFile);
 
-      // Escape text for shell
-      const escapedText = text.replace(/'/g, "'\\''");
-      
       // Try to use espeak if available (common on Linux)
       try {
-        await execPromise(`espeak -v es -w "${outputFile.replace('.mp3', '.wav')}" '${escapedText}'`);
+        const wavFile = outputFile.replace('.mp3', '.wav');
+        
+        // Use execFile for safer command execution with arguments array
+        await execFilePromise('espeak', ['-v', 'es', '-w', wavFile, text]);
         
         // Convert WAV to MP3 using ffmpeg
-        await execPromise(`ffmpeg -i "${outputFile.replace('.mp3', '.wav')}" -codec:a libmp3lame -qscale:a 2 "${outputFile}" -y`);
+        await execFilePromise('ffmpeg', ['-i', wavFile, '-codec:a', 'libmp3lame', '-qscale:a', '2', outputFile, '-y']);
         
         // Delete WAV file
-        fs.unlinkSync(outputFile.replace('.mp3', '.wav'));
+        fs.unlinkSync(wavFile);
         
       } catch (error) {
         // If espeak is not available, create a silent audio file as placeholder
@@ -65,7 +67,7 @@ async function textToSpeech(text, index) {
         console.warn('TTS engine not available, creating placeholder audio');
         
         // Create a 1-second silent audio file
-        await execPromise(`ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 1 -q:a 9 -acodec libmp3lame "${outputFile}" -y`);
+        await execFilePromise('ffmpeg', ['-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=mono', '-t', '1', '-q:a', '9', '-acodec', 'libmp3lame', outputFile, '-y']);
       }
     }
 
