@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Listen Thread - Twitter/X Thread to Speech</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 0.95em;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        .status.loading {
+            display: block;
+            background: #e3f2fd;
+            color: #1976d2;
+            border: 1px solid #90caf9;
+        }
+
+        .status.success {
+            display: block;
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #81c784;
+        }
+
+        .status.error {
+            display: block;
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef5350;
+        }
+
+        .audio-player {
+            margin-top: 20px;
+            display: none;
+        }
+
+        audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .example {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            font-size: 0.85em;
+            color: #777;
+        }
+
+        .example strong {
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎧 Listen Thread</h1>
+        <p class="subtitle">Convierte hilos de Twitter/X a audio</p>
+
+        <div class="input-group">
+            <label for="tweetUrl">URL del Tweet:</label>
+            <input 
+                type="text" 
+                id="tweetUrl" 
+                placeholder="https://twitter.com/usuario/status/123456789..."
+            />
+        </div>
+
+        <button id="convertBtn" onclick="convertThread()">
+            Convertir a Audio
+        </button>
+
+        <div id="status" class="status"></div>
+
+        <div id="audioPlayer" class="audio-player">
+            <h3>🎵 Audio Generado</h3>
+            <audio id="audioElement" controls></audio>
+            <div id="info" class="info"></div>
+        </div>
+
+        <div class="example">
+            <strong>Ejemplo de URL:</strong><br>
+            https://twitter.com/usuario/status/1234567890<br>
+            o<br>
+            https://x.com/usuario/status/1234567890
+        </div>
+    </div>
+
+    <script>
+        async function convertThread() {
+            const urlInput = document.getElementById('tweetUrl');
+            const statusDiv = document.getElementById('status');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const audioElement = document.getElementById('audioElement');
+            const infoDiv = document.getElementById('info');
+            const convertBtn = document.getElementById('convertBtn');
+
+            const url = urlInput.value.trim();
+
+            if (!url) {
+                showStatus('error', 'Por favor ingresa una URL válida');
+                return;
+            }
+
+            // Reset
+            audioPlayer.style.display = 'none';
+            convertBtn.disabled = true;
+
+            // Show loading
+            showStatus('loading', '<div class="loader"></div> Procesando hilo... Esto puede tomar un momento.');
+
+            try {
+                const response = await fetch('/api/convert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Error al procesar el hilo');
+                }
+
+                // Show success
+                showStatus('success', '✓ ¡Conversión exitosa!');
+                
+                // Show audio player
+                audioElement.src = data.audioUrl;
+                audioPlayer.style.display = 'block';
+                
+                // Show info
+                infoDiv.innerHTML = `
+                    <strong>Tweets procesados:</strong> ${data.tweets}<br>
+                    <strong>Chunks de audio:</strong> ${data.chunks}
+                `;
+
+            } catch (error) {
+                showStatus('error', '✗ ' + error.message);
+            } finally {
+                convertBtn.disabled = false;
+            }
+        }
+
+        function showStatus(type, message) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = 'status ' + type;
+            statusDiv.innerHTML = message;
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('tweetUrl').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                convertThread();
+            }
+        });
+    </script>
+</body>
+</html>

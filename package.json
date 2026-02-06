@@ -1,0 +1,29 @@
+{
+  "name": "listen-thread",
+  "version": "1.0.0",
+  "description": "X's thread text-to-speech reader",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZarzueloM/listen-thread.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/ZarzueloM/listen-thread/issues"
+  },
+  "homepage": "https://github.com/ZarzueloM/listen-thread#readme",
+  "dependencies": {
+    "@google-cloud/text-to-speech": "^6.4.0",
+    "express": "^5.2.1",
+    "fluent-ffmpeg": "^2.1.3",
+    "playwright": "^1.58.1"
+  }
+}
