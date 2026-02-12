@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Listen Thread - Twitter/X Thread to Speech</title>
+    <title>Listen Thread - X Thread to Speech</title>
     <style>
         * {
             margin: 0;
@@ -65,6 +65,22 @@
         }
 
         input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        select:focus {
             outline: none;
             border-color: #667eea;
         }
@@ -178,15 +194,23 @@
 <body>
     <div class="container">
         <h1>🎧 Listen Thread</h1>
-        <p class="subtitle">Convierte hilos de Twitter/X a audio</p>
+        <p class="subtitle">Convierte hilos de X a audio</p>
 
         <div class="input-group">
-            <label for="tweetUrl">URL del Tweet:</label>
+            <label for="tweetUrl">URL del hilo en X:</label>
             <input 
                 type="text" 
                 id="tweetUrl" 
-                placeholder="https://twitter.com/usuario/status/123456789..."
+                placeholder="https://x.com/usuario/status/123456789..."
             />
+        </div>
+
+        <div class="input-group">
+            <label for="voiceGender">Género de la voz:</label>
+            <select id="voiceGender">
+                <option value="male" selected>Masculino</option>
+                <option value="female">Femenino</option>
+            </select>
         </div>
 
         <button id="convertBtn" onclick="convertThread()">
@@ -202,10 +226,9 @@
         </div>
 
         <div class="example">
-            <strong>Ejemplo de URL:</strong><br>
-            https://twitter.com/usuario/status/1234567890<br>
-            o<br>
-            https://x.com/usuario/status/1234567890
+            <strong>Ejemplo de URL válida:</strong><br>
+            https://x.com/usuario/status/1234567890<br><br>
+            Solo se aceptan URLs de hilos de X (`x.com`).
         </div>
     </div>
 
@@ -225,6 +248,13 @@
                 return;
             }
 
+            // Validar que la URL sea de X (x.com)
+            const xUrlPattern = /^https?:\/\/(www\.)?x\.com\//i;
+            if (!xUrlPattern.test(url)) {
+                showStatus('error', 'Solo se aceptan URLs de hilos de X (x.com)');
+                return;
+            }
+
             // Reset
             audioPlayer.style.display = 'none';
             convertBtn.disabled = true;
@@ -232,13 +262,15 @@
             // Show loading
             showStatus('loading', '<div class="loader"></div> Procesando hilo... Esto puede tomar un momento.');
 
+            const gender = document.getElementById('voiceGender').value || 'male';
+
             try {
                 const response = await fetch('/api/convert', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ url })
+                    body: JSON.stringify({ url, gender })
                 });
 
                 const data = await response.json();

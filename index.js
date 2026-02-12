@@ -9,32 +9,51 @@ const { mergeAudioFiles } = require('./src/audioMerger');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Resolve absolute paths for static directories
+const publicDir = path.join(__dirname, 'public');
+const audioDir = path.join(__dirname, 'audio');
+
 // Middleware
 app.use(express.json());
-app.use(express.static('public'));
-app.use('/audio', express.static('audio'));
+app.use(express.static(publicDir));
+app.use('/audio', express.static(audioDir));
 
-// Ensure audio directory exists using absolute path
-const audioDir = path.join(__dirname, 'audio');
+// Ensure audio directory exists
 if (!fs.existsSync(audioDir)) {
   fs.mkdirSync(audioDir);
+}
+
+// Explicit root route to serve the web UI
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
+
+// Map gender to Speechify voiceId (carmen / carlos)
+function getVoiceIdFromGender(gender) {
+  if (gender === 'female') return 'carmen';
+  return 'carlos'; // default: male
 }
 
 // API endpoint to process tweet thread
 app.post('/api/convert', async (req, res) => {
   try {
-    const { url } = req.body;
+    const { url, gender: rawGender } = req.body;
 
     if (!url) {
       return res.status(400).json({ error: 'Tweet URL is required' });
     }
 
-    // Validate URL
-    if (!url.match(/twitter\.com|x\.com/)) {
-      return res.status(400).json({ error: 'Invalid Twitter/X URL' });
+    // Validate URL (only accept X URLs)
+    if (!url.match(/x\.com/)) {
+      return res.status(400).json({ error: 'Invalid X URL (only x.com is accepted)' });
     }
 
-    console.log('Processing URL:', url);
+    // Validate gender: accept 'male' | 'female', default to 'male'
+    const validGenders = ['male', 'female'];
+    const gender = validGenders.includes(rawGender) ? rawGender : 'male';
+    const voiceId = getVoiceIdFromGender(gender);
+
+    console.log('Processing URL:', url, 'voice:', voiceId);
 
     // Step 1: Scrape the thread
     const tweets = await scrapeThread(url);
@@ -56,7 +75,7 @@ app.post('/api/convert', async (req, res) => {
     // Step 4: Convert each chunk to speech
     const audioFiles = [];
     for (let i = 0; i < chunks.length; i++) {
-      const audioFile = await textToSpeech(chunks[i], i);
+      const audioFile = await textToSpeech(chunks[i], i, { voiceId });
       audioFiles.push(audioFile);
       console.log(`Generated audio for chunk ${i + 1}/${chunks.length}`);
     }
