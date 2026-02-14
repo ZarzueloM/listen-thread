@@ -20,11 +20,13 @@ async function scrapeThread(url) {
 
     const page = await context.newPage();
 
-    // Navigate to the tweet
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
+    // Be more tolerant with Twitter/X behaviour:
+    // - use 'domcontentloaded' instead of 'networkidle' (que casi nunca se cumple en X)
+    // - aumentar timeout de navegación
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-    // Wait for tweets to load by waiting for the tweet element
-    await page.waitForSelector('[data-testid="tweet"]', { timeout: 10000 });
+    // Esperar de forma explícita a que aparezcan los tweets en pantalla
+    await page.waitForSelector('[data-testid="tweet"]', { timeout: 30000 });
 
     // Extract the username from the first tweet (OP)
     const opUsername = await page.evaluate(() => {

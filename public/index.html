@@ -69,6 +69,53 @@
             border-color: #667eea;
         }
 
+        .input-with-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Space between input and buttons */
+        }
+
+        .input-with-buttons input[type="text"] {
+            flex-grow: 1; /* Allow input to take available space */
+        }
+
+        .icon-button {
+            width: 40px; /* Fixed width for icon buttons */
+            height: 40px; /* Fixed height for icon buttons */
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            box-shadow: none; /* Remove default button shadow */
+        }
+
+        .icon-button:hover {
+            background: #e0e0e0;
+            color: #333;
+            border-color: #ccc;
+            transform: none; /* Override general button hover effect */
+            box-shadow: none; /* Override general button hover effect */
+        }
+
+        .icon-button:active {
+            background: #d0d0d0;
+            transform: none;
+        }
+
+        .icon-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            color: #888;
+            border-color: #bbb;
+        }
+
         select {
             width: 100%;
             padding: 12px 16px;
@@ -198,11 +245,15 @@
 
         <div class="input-group">
             <label for="tweetUrl">URL del hilo en X:</label>
-            <input 
-                type="text" 
-                id="tweetUrl" 
-                placeholder="https://x.com/usuario/status/123456789..."
-            />
+            <div class="input-with-buttons">
+                <input 
+                    type="text" 
+                    id="tweetUrl" 
+                    placeholder="https://x.com/usuario/status/123456789..."
+                />
+                <button id="clearUrlBtn" class="icon-button" title="Limpiar URL">✖</button>
+                <button id="pasteUrlBtn" class="icon-button" title="Pegar desde el portapapeles">📋</button>
+            </div>
         </div>
 
         <div class="input-group">
@@ -311,6 +362,23 @@
                 convertThread();
             }
         });
+
+        document.getElementById('clearUrlBtn').addEventListener('click', clearUrlInput);
+        document.getElementById('pasteUrlBtn').addEventListener('click', pasteFromClipboard);
+
+        function clearUrlInput() {
+            document.getElementById('tweetUrl').value = '';
+        }
+
+        async function pasteFromClipboard() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('tweetUrl').value = text;
+            } catch (err) {
+                console.error('Failed to read clipboard contents: ', err);
+                showStatus('error', 'Error al pegar: Permiso denegado o portapapeles vacío.');
+            }
+        }
     </script>
 </body>
 </html>

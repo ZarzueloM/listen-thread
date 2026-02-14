@@ -148,8 +148,15 @@ Set these in your deployment platform:
 ```env
 PORT=3000
 NODE_ENV=production
+
+# TTS: Speechify (primary). When set, voices are: male -> carlos, female -> carmen (selectable in the UI).
+SPEECHIFY_API_KEY=your_api_key  # Optional; get it at https://speechify.com
+
+# TTS fallback when SPEECHIFY_API_KEY is not set
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json  # Optional
 ```
+
+**TTS priority:** If `SPEECHIFY_API_KEY` is set, Speechify is used and the user can choose voice gender (Masculino/Carlos or Femenino/Carmen) in the web UI. Otherwise the app uses Google Cloud TTS (if configured) or espeak.
 
 ## Post-Deployment
 
@@ -174,45 +181,26 @@ docker logs -f <container-id>
 
 ### Cleanup Old Audio Files
 
-Add a cron job to clean up old audio files:
+The app includes **built-in cleanup**: merged MP3 files older than a configurable TTL are removed automatically.
+
+- Set `AUDIO_MAX_AGE_HOURS` in `.env` (e.g. `24` for 24 hours). Use `0` to disable.
+- Files newer than `AUDIO_MIN_AGE_MINUTES` (default 15) are never deleted, so a file that was just created and is being played is safe.
+- Cleanup runs at server startup and then every hour.
+- Only `merged_*.mp3` files are removed; chunk files are already deleted right after each conversion.
+
+Example:
+```bash
+AUDIO_MAX_AGE_HOURS=24
+```
+
+**Optional (external cron):** If you prefer to rely on cron instead of the built-in scheduler:
 
 ```bash
 # Add to crontab (crontab -e)
-0 2 * * * find /path/to/listen-thread/audio -name "*.mp3" -mtime +1 -delete
+0 2 * * * find /path/to/listen-thread/audio -name "merged_*.mp3" -mtime +1 -delete
 ```
 
-Or create a cleanup script:
-
-```javascript
-// cleanup.js
-const fs = require('fs');
-const path = require('path');
-
-const audioDir = path.join(__dirname, 'audio');
-const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-fs.readdir(audioDir, (err, files) => {
-  if (err) return;
-  
-  files.forEach(file => {
-    if (!file.endsWith('.mp3')) return;
-    
-    const filePath = path.join(audioDir, file);
-    fs.stat(filePath, (err, stats) => {
-      if (err) return;
-      
-      if (Date.now() - stats.mtime.getTime() > maxAge) {
-        fs.unlink(filePath, () => {});
-      }
-    });
-  });
-});
-```
-
-Run with:
-```bash
-node cleanup.js
-```
+If using cron, you can set `AUDIO_MAX_AGE_HOURS=0` to disable the in-app cleanup.
 
 ## Scaling Considerations
 

@@ -25,9 +25,12 @@
   "homepage": "https://github.com/ZarzueloM/listen-thread#readme",
   "dependencies": {
     "@google-cloud/text-to-speech": "^6.4.0",
+    "@speechify/api": "^1.0.1",
+    "dotenv": "^17.3.0",
     "express": "^5.2.1",
     "fluent-ffmpeg": "^2.1.3",
     "playwright": "^1.58.1",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "express-rate-limit": "^7.3.1"
   }
 }

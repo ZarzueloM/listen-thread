@@ -3,59 +3,64 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
+function runMerge(concatFile, outputFile, useCopy) {
+  return new Promise((resolve, reject) => {
+    let ffmpegStderr = '';
+    const outputOpts = useCopy
+      ? ['-c', 'copy']
+      : ['-c:a', 'libmp3lame', '-qscale:a', '2', '-ar', '44100', '-ac', '1'];
+    const cmd = ffmpeg()
+      .input(concatFile)
+      .inputOptions(['-f', 'concat', '-safe', '0'])
+      .outputOptions(outputOpts)
+      .output(outputFile);
+
+    cmd
+      .on('stderr', (line) => { ffmpegStderr += line + '\n'; })
+      .on('end', () => resolve({ ok: true }))
+      .on('error', (err) => reject(new Error(`${err.message}\nffmpeg stderr:\n${ffmpegStderr.trim()}`)))
+      .run();
+  });
+}
+
 /**
- * Merges multiple audio files into a single file
+ * Merges multiple audio files into a single file.
+ * Tries stream copy first; if it fails (e.g. different codecs between chunks), retries with re-encode.
  * @param {string[]} audioFiles - Array of audio file paths
  * @returns {Promise<string>} - Path to the merged audio file
  */
 async function mergeAudioFiles(audioFiles) {
-  return new Promise((resolve, reject) => {
-    const uniqueId = uuidv4();
-    const outputFile = path.join(__dirname, '..', 'audio', `merged_${uniqueId}.mp3`);
-    
-    if (audioFiles.length === 0) {
-      reject(new Error('No audio files to merge'));
-      return;
+  const uniqueId = uuidv4();
+  const outputFile = path.join(__dirname, '..', 'audio', `merged_${uniqueId}.mp3`);
+
+  if (audioFiles.length === 0) {
+    throw new Error('No audio files to merge');
+  }
+
+  if (audioFiles.length === 1) {
+    fs.copyFileSync(audioFiles[0], outputFile);
+    return outputFile;
+  }
+
+  const concatFile = path.join(__dirname, '..', 'audio', `concat_${uniqueId}.txt`);
+  const escapePath = (p) => path.resolve(p).replace(/'/g, "'\\''");
+  const concatContent = audioFiles.map(file => `file '${escapePath(file)}'`).join('\n');
+  fs.writeFileSync(concatFile, concatContent);
+
+  try {
+    await runMerge(concatFile, outputFile, true);
+    return outputFile;
+  } catch (copyErr) {
+    console.warn('Merge with -c copy failed (chunks may have different format), retrying with re-encode:', copyErr.message.split('\n')[0]);
+    try {
+      await runMerge(concatFile, outputFile, false);
+      return outputFile;
+    } catch (reencodeErr) {
+      throw new Error(`Failed to merge audio files: ${reencodeErr.message}`);
     }
-
-    if (audioFiles.length === 1) {
-      // If only one file, just copy it
-      fs.copyFileSync(audioFiles[0], outputFile);
-      resolve(outputFile);
-      return;
-    }
-
-    // Create a concat file for ffmpeg with absolute paths
-    const concatFile = path.join(__dirname, '..', 'audio', `concat_${uniqueId}.txt`);
-    const concatContent = audioFiles.map(file => `file '${path.resolve(file)}'`).join('\n');
-    fs.writeFileSync(concatFile, concatContent);
-
-    // Use ffmpeg to concatenate audio files
-    ffmpeg()
-      .input(concatFile)
-      .inputOptions(['-f', 'concat', '-safe', '0'])
-      .outputOptions(['-c', 'copy'])
-      .output(outputFile)
-      .on('end', () => {
-        // Clean up concat file
-        try {
-          fs.unlinkSync(concatFile);
-        } catch (err) {
-          console.error('Error deleting concat file:', err);
-        }
-        resolve(outputFile);
-      })
-      .on('error', (err) => {
-        // Clean up concat file
-        try {
-          fs.unlinkSync(concatFile);
-        } catch (error) {
-          console.error('Error deleting concat file:', error);
-        }
-        reject(new Error(`Failed to merge audio files: ${err.message}`));
-      })
-      .run();
-  });
+  } finally {
+    try { fs.unlinkSync(concatFile); } catch (e) { console.error('Error deleting concat file:', e); }
+  }
 }
 
 module.exports = { mergeAudioFiles };

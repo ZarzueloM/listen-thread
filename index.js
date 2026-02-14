@@ -1,13 +1,37 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
 const { scrapeThread } = require('./src/scraper');
 const { normalizeText } = require('./src/textNormalizer');
 const { textToSpeech } = require('./src/tts');
 const { mergeAudioFiles } = require('./src/audioMerger');
+const { runCleanup, scheduleCleanup } = require('./src/audioCleanup');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Trust proxy for correct IP detection when deployed behind a proxy
+app.set('trust proxy', 1);
+
+// Rate limiting for the /api/convert endpoint (stricter)
+const convertLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per window
+  message: 'Too many requests from this IP, please try again after 15 minutes',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// General rate limiting for other API endpoints (more lenient)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: 'Too many requests from this IP, please try again after 15 minutes',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Resolve absolute paths for static directories
 const publicDir = path.join(__dirname, 'public');
@@ -23,6 +47,11 @@ if (!fs.existsSync(audioDir)) {
   fs.mkdirSync(audioDir);
 }
 
+// Cleanup old merged audio files (TTL from AUDIO_MAX_AGE_HOURS, 0 = disabled)
+runCleanup(audioDir);
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+scheduleCleanup(CLEANUP_INTERVAL_MS, audioDir);
+
 // Explicit root route to serve the web UI
 app.get('/', (req, res) => {
   res.sendFile(path.join(publicDir, 'index.html'));
@@ -35,7 +64,7 @@ function getVoiceIdFromGender(gender) {
 }
 
 // API endpoint to process tweet thread
-app.post('/api/convert', async (req, res) => {
+app.post('/api/convert', convertLimiter, async (req, res) => {
   try {
     const { url, gender: rawGender } = req.body;
 
@@ -112,7 +141,7 @@ app.post('/api/convert', async (req, res) => {
 });
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', apiLimiter, (req, res) => {
   res.json({ status: 'ok' });
 });
 
