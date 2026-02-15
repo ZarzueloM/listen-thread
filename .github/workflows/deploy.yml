@@ -31,9 +31,19 @@ jobs:
       - name: Setup SSH key
         run: |
           install -m 700 -d ~/.ssh
-          # Strip CR if present (e.g. from GitHub UI paste) so OpenSSH can load the key (avoids "error in libcrypto")
-          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
+          raw="${{ secrets.SSH_PRIVATE_KEY }}"
+          # Optional: secret can be "base64:<b64>" to avoid paste/encoding issues
+          if [[ "$raw" == base64:* ]]; then
+            echo "${raw#base64:}" | base64 -d > ~/.ssh/deploy_key
+          else
+            printf '%s' "$raw" | tr -d '\r' > ~/.ssh/deploy_key
+            [ -n "$(tail -c1 ~/.ssh/deploy_key 2>/dev/null)" ] && echo >> ~/.ssh/deploy_key
+          fi
           chmod 600 ~/.ssh/deploy_key
+          if ! ssh-keygen -y -f ~/.ssh/deploy_key >/dev/null 2>&1; then
+            echo "::error::SSH_PRIVATE_KEY invalid or corrupted. Fix: 1) Regenerate: ssh-keygen -t ed25519 -C deploy -f deploy_key -N \"\" 2) Add public key to VM authorized_keys 3) Store private key in secret. Or use base64: run 'base64 -w0 deploy_key' and set secret to 'base64:' + that output."
+            exit 1
+          fi
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Rsync to VM
