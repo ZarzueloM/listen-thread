@@ -1,0 +1,65 @@
+# Deploy to VM (e.g. Google Cloud) on every push to main.
+# Requires GitHub Secrets: SSH_PRIVATE_KEY, SSH_USERNAME, SSH_HOST, DOTENV_CONTENT.
+# See DEPLOYMENT.md for VM setup and "solo tú" checklist.
+
+name: Deploy to VM
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies (verify lockfile)
+        run: npm ci
+
+      - name: Prepare .env for VM
+        run: |
+          printf '%s' "${{ secrets.DOTENV_CONTENT }}" > .env.remote
+
+      - name: Setup SSH key
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Rsync to VM
+        run: |
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new" \
+            --exclude 'node_modules' \
+            --exclude '.git' \
+            --exclude '.env' \
+            --exclude 'audio' \
+            --exclude '.env.remote' \
+            . "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/var/www/listen-thread/"
+          # Write .env on VM from secret (scp .env.remote as .env)
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            .env.remote "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/var/www/listen-thread/.env"
+
+      - name: Deploy on VM (install, playwright, pm2)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /var/www/listen-thread
+            npm ci --omit=dev
+            npx playwright install chromium --with-deps
+            pm2 delete listen-thread || true
+            pm2 start index.js --name listen-thread
+            pm2 save

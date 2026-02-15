@@ -141,6 +141,42 @@ server {
 }
 ```
 
+### Deploy to VM with GitHub Actions (e.g. Google Cloud)
+
+The repo includes a workflow (`.github/workflows/deploy.yml`) that deploys to a VM on every push to `main`. It uses SSH + rsync and PM2 on the VM.
+
+**Path on VM:** `/var/www/listen-thread`
+
+**Secrets required** (Settings → Secrets and variables → Actions):
+
+| Secret | Description |
+|--------|-------------|
+| `SSH_PRIVATE_KEY` | Full private key (including `-----BEGIN ... END ...-----`) for SSH to the VM |
+| `SSH_USERNAME` | SSH user on the VM (e.g. Debian default user) |
+| `SSH_HOST` | VM IP or hostname |
+| `DOTENV_CONTENT` | Full contents of `.env` for production (e.g. `PORT=3000`, `SPEECHIFY_API_KEY=...`, `AUDIO_MAX_AGE_HOURS=24`) |
+
+**Checklist — only you can do (VM and GitHub):**
+
+- **VM and access**
+  - Create the instance (e.g. Google Cloud: Debian 12, 2 vCPU, 1 GB RAM, 10 GB disk) and allow SSH (port 22).
+  - Generate an SSH key pair for GitHub Actions; add the **public** key to the VM (`~/.ssh/authorized_keys`).
+  - Store the **private** key in the repo secret `SSH_PRIVATE_KEY`.
+- **GitHub**
+  - Add the four secrets above.
+- **VM one-time setup**
+  - Install Node.js 18+ (e.g. NodeSource or nvm).
+  - Install FFmpeg: `apt-get install -y ffmpeg`.
+  - Optional: `apt-get install -y espeak` for TTS fallback without Speechify.
+  - Install PM2: `npm install -g pm2`.
+  - Create deploy dir: `sudo mkdir -p /var/www/listen-thread && sudo chown $USER:$USER /var/www/listen-thread`.
+  - After the first successful deploy, run `pm2 startup` (apply the suggested command), then `pm2 save`.
+- **Check**
+  - Test SSH: `ssh -i <private_key> <SSH_USERNAME>@<SSH_HOST>`.
+  - After a push to `main`, check the Actions tab and on the VM run `pm2 logs listen-thread`.
+
+**Note (1 GB RAM):** If the app or Chromium runs out of memory, consider adding `--disable-dev-shm-usage` and `--disable-gpu` to the Chromium launch args in `src/scraper.js`.
+
 ## Environment Variables
 
 Set these in your deployment platform:
