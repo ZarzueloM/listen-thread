@@ -151,7 +151,7 @@ The repo includes a workflow (`.github/workflows/deploy.yml`) that deploys to a 
 
 | Secret | Description |
 |--------|-------------|
-| `SSH_PRIVATE_KEY` | Full private key (including `-----BEGIN ... END ...-----`) for SSH to the VM |
+| `SSH_PRIVATE_KEY` | Full private key (including `-----BEGIN ... END ...-----`) for SSH to the VM. If you get "Load key ... error in libcrypto", re-paste the key in Secrets (no extra spaces/newlines; the workflow strips stray CR for you). |
 | `SSH_USERNAME` | SSH user on the VM (e.g. Debian default user) |
 | `SSH_HOST` | VM IP or hostname |
 | `DOTENV_CONTENT` | Full contents of `.env` for production (e.g. `PORT=3000`, `SPEECHIFY_API_KEY=...`, `AUDIO_MAX_AGE_HOURS=24`) |

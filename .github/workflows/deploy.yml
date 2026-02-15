@@ -31,7 +31,8 @@ jobs:
       - name: Setup SSH key
         run: |
           install -m 700 -d ~/.ssh
-          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          # Strip CR if present (e.g. from GitHub UI paste) so OpenSSH can load the key (avoids "error in libcrypto")
+          printf '%s' "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
@@ -50,16 +51,12 @@ jobs:
             .env.remote "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}:/var/www/listen-thread/.env"
 
       - name: Deploy on VM (install, playwright, pm2)
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" 'set -e
             cd /var/www/listen-thread
             npm ci --omit=dev
             npx playwright install chromium --with-deps
             pm2 delete listen-thread || true
             pm2 start index.js --name listen-thread
-            pm2 save
+            pm2 save'
