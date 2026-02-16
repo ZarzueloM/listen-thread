@@ -226,6 +226,7 @@ Do this once. Use a dedicated key pair only for deploy (not your personal SSH ke
     Si ya tenías nvm y quieres quitarlo: elimina las líneas de nvm de `~/.bashrc` (y opcionalmente `rm -rf ~/.nvm`), luego instala Node con los comandos de arriba. Comprueba con `which node` y `node -v`.
   - Install rsync (required for deploy): `sudo apt-get install -y rsync`. The workflow can install it automatically if the user has passwordless sudo.
   - Install FFmpeg: `sudo apt-get install -y ffmpeg`.
+  - Install Playwright/Chromium system dependencies (once): `npx playwright install-deps chromium`. The workflow only runs `playwright install chromium` (browser binary).
   - Optional: `sudo apt-get install -y espeak` for TTS fallback without Speechify.
   - Install PM2: `sudo npm install -g pm2`.
   - Create deploy dir: `sudo mkdir -p /var/www/listen-thread && sudo chown $USER:$USER /var/www/listen-thread`.
