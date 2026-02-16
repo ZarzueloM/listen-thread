@@ -69,7 +69,9 @@ jobs:
       - name: Deploy on VM (install, playwright, pm2)
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" "bash -lc 'set -e
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" "bash -lc '
+            [ -s \"\$HOME/.nvm/nvm.sh\" ] && \. \"\$HOME/.nvm/nvm.sh\"
+            set -e
             cd /var/www/listen-thread
             npm ci --omit=dev
             npx playwright install chromium --with-deps
