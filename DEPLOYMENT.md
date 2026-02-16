@@ -156,6 +156,59 @@ The repo includes a workflow (`.github/workflows/deploy.yml`) that deploys to a 
 | `SSH_HOST` | VM IP or hostname |
 | `DOTENV_CONTENT` | Full contents of `.env` for production (e.g. `PORT=3000`, `SPEECHIFY_API_KEY=...`, `AUDIO_MAX_AGE_HOURS=24`) |
 
+**SSH keys for GitHub Actions — step-by-step**
+
+Do this once. Use a dedicated key pair only for deploy (not your personal SSH key).
+
+1. **Create the key pair (on your machine)**
+
+   ```bash
+   cd ~/.ssh
+   ssh-keygen -t ed25519 -C "github-actions-deploy" -f deploy_listen_thread -N ""
+   ```
+
+   This creates:
+   - `deploy_listen_thread` — **private** key (→ GitHub Secret)
+   - `deploy_listen_thread.pub` — **public** key (→ VM)
+
+2. **Install the public key on the VM**
+
+   From your machine, with your normal SSH access to the VM. If you use a **key** (no password), set `MY_KEY` to that key path and use it in every command:
+
+   ```bash
+   # Replace USER, VM_IP and, if you use a key, MY_KEY (e.g. ~/.ssh/id_rsa or ~/.ssh/google_compute_engine)
+   MY_KEY=~/.ssh/tu_clave_actual   # la que ya usas para entrar a la VM
+   ssh -i "$MY_KEY" USER@VM_IP "mkdir -p ~/.ssh && chmod 700 ~/.ssh"
+   scp -i "$MY_KEY" ~/.ssh/deploy_listen_thread.pub USER@VM_IP:~/.ssh/
+   ssh -i "$MY_KEY" USER@VM_IP "cat ~/.ssh/deploy_listen_thread.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && rm ~/.ssh/deploy_listen_thread.pub"
+   ```
+
+   Or manually: SSH in with your key (`ssh -i "$MY_KEY" USER@VM_IP`), then edit `~/.ssh/authorized_keys` and paste the **entire** content of `deploy_listen_thread.pub` as a single line.
+
+   **If you only use Google Cloud in-browser SSH** (no local SSH): you have the private key as text and need to get the public key and add it on the VM. On your **local** machine: save the private key to a file (e.g. `deploy_key`), then run `ssh-keygen -y -f deploy_key` — the output is the public key (one line). Copy it. In the **Google Cloud console** → Compute Engine → your VM → **SSH** (browser window). In that terminal run: `mkdir -p ~/.ssh && echo 'PEGA_AQUÍ_LA_LÍNEA_PÚBLICA' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys`. Replace `PEGA_AQUÍ_LA_LÍNEA_PÚBLICA` with the line you got from `ssh-keygen -y`. Then you can delete the local `deploy_key` file if you prefer.
+
+3. **Test login from your machine (same key GitHub will use)**
+
+   ```bash
+   ssh -i ~/.ssh/deploy_listen_thread USER@VM_IP "echo OK"
+   ```
+
+   You must see `OK`. If you get "Permission denied (publickey)", the public key is not correctly in `authorized_keys` or the user/path is wrong.
+
+4. **Put the private key in GitHub Secrets**
+
+   - Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
+   - Name: `SSH_PRIVATE_KEY`
+   - Value: either paste the **entire** content of `deploy_listen_thread` (from `-----BEGIN OPENSSH PRIVATE KEY-----` to `-----END OPENSSH PRIVATE KEY-----`), or use base64 to avoid paste issues:
+     ```bash
+     # Linux
+     echo -n "base64:$(base64 -w0 ~/.ssh/deploy_listen_thread)"
+     # Copy the output and paste as the secret value (including the "base64:" prefix)
+     ```
+   - Also create/check: `SSH_USERNAME` = same `USER` as above, `SSH_HOST` = same `VM_IP` (or hostname).
+
+5. **Trigger the workflow** (push to `main`) and check the Actions tab.
+
 **Checklist — only you can do (VM and GitHub):**
 
 - **VM and access**
