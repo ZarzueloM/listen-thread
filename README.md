@@ -14,7 +14,7 @@ Convierte hilos de Twitter/X a audio mediante text-to-speech.
 
 ## Requisitos
 
-- Node.js (v18 o superior)
+- Node.js 20 o 18 (LTS)
 - FFmpeg (para procesamiento de audio)
 - (Opcional) API key de Speechify para TTS de mayor calidad (variable de entorno `SPEECHIFY_API_KEY`)
 - (Opcional) Credenciales de Google Cloud Text-to-Speech (fallback si no hay Speechify)
@@ -86,6 +86,12 @@ npm start
 5. Haz clic en "Convertir a Audio"
 
 6. Espera a que se procese el hilo y descarga el audio
+
+## Despliegue
+
+Cada **push a la rama `main`** despliega automáticamente en una VM (p. ej. Google Cloud) mediante GitHub Actions (`.github/workflows/deploy.yml`). Se usa SSH, rsync y PM2 en la VM.
+
+Para configurar el deploy (VM, claves SSH, secrets de GitHub, setup único en la VM), consulta **[DEPLOYMENT.md](DEPLOYMENT.md)**.
 
 ## API
 
@@ -165,7 +171,7 @@ Si no configuras Speechify, se usa en este orden: Google Cloud TTS (si tienes `G
 - El scraping puede fallar si Twitter/X cambia su estructura HTML
 - Sin `SPEECHIFY_API_KEY` ni credenciales de Google Cloud TTS, se usa espeak como fallback
 - Los archivos de audio se almacenan en la carpeta `audio/`
-- La limpieza de archivos merged antiguos es automática: configura `AUDIO_MAX_AGE_HOURS` (ej. `24`); `0` la desactiva
+- La limpieza de archivos merged antiguos es automática: configura `AUDIO_MAX_AGE_HOURS` (ej. `24`) en `.env`; `0` la desactiva
 
 ## Licencia
 
