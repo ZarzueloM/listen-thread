@@ -4,7 +4,7 @@ This guide covers deploying the Listen Thread application to various platforms.
 
 ## Prerequisites
 
-- Node.js 18 or higher
+- Node.js 20 or 18 (LTS)
 - FFmpeg installed
 - espeak installed (for TTS fallback)
 - Git
@@ -33,7 +33,7 @@ npm start
 Create a `Dockerfile`:
 
 ```dockerfile
-FROM node:18-slim
+FROM node:20-slim
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
@@ -104,7 +104,7 @@ git push heroku main
 2. SSH into the server
 3. Install Node.js, FFmpeg, and espeak:
 ```bash
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs ffmpeg espeak
 ```
 
@@ -218,11 +218,16 @@ Do this once. Use a dedicated key pair only for deploy (not your personal SSH ke
 - **GitHub**
   - Add the four secrets above.
 - **VM one-time setup**
-  - Install Node.js 18+ (e.g. NodeSource or nvm). If you use nvm, the workflow runs remote commands in a login shell (`bash -lc`) so nvm’s PATH is available.
+  - **Node.js 20 (recomendado: instalación global, no nvm).** En Debian/Ubuntu, usar NodeSource para que `node`/`npm` estén en el PATH en cualquier sesión (incl. SSH no interactivo):
+    ```bash
+    curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+    sudo apt-get install -y nodejs
+    ```
+    Si ya tenías nvm y quieres quitarlo: elimina las líneas de nvm de `~/.bashrc` (y opcionalmente `rm -rf ~/.nvm`), luego instala Node con los comandos de arriba. Comprueba con `which node` y `node -v`.
   - Install rsync (required for deploy): `sudo apt-get install -y rsync`. The workflow can install it automatically if the user has passwordless sudo.
-  - Install FFmpeg: `apt-get install -y ffmpeg`.
-  - Optional: `apt-get install -y espeak` for TTS fallback without Speechify.
-  - Install PM2: `npm install -g pm2`.
+  - Install FFmpeg: `sudo apt-get install -y ffmpeg`.
+  - Optional: `sudo apt-get install -y espeak` for TTS fallback without Speechify.
+  - Install PM2: `sudo npm install -g pm2`.
   - Create deploy dir: `sudo mkdir -p /var/www/listen-thread && sudo chown $USER:$USER /var/www/listen-thread`.
   - After the first successful deploy, run `pm2 startup` (apply the suggested command), then `pm2 save`.
 - **Check**
