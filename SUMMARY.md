@@ -1,13 +1,13 @@
 # Project Summary: Listen Thread
 
 ## Overview
-Listen Thread is a web application that converts Twitter/X threads into audio files using text-to-speech technology. Users can paste a tweet URL, and the application will scrape the thread, extract the original poster's tweets, normalize the text, and generate an MP3 audio file.
+Listen Thread is a web application that converts X threads into audio files using text-to-speech technology. Users can paste a post URL, and the application will scrape the thread, extract the original poster's posts, normalize the text, and generate an MP3 audio file.
 
 ## What Was Built
 
 ### Core Application
 - **Backend Server**: Express.js REST API
-- **Web Scraper**: Playwright-based scraper for Twitter/X
+- **Web Scraper**: Playwright-based scraper for X
 - **Text Processing**: Normalization and chunking modules
 - **Audio Generation**: TTS with Google Cloud + espeak fallback
 - **Audio Processing**: FFmpeg-based merging
@@ -73,7 +73,7 @@ Process:
 
 1. **Input Validation**
    - URL format checking
-   - Domain whitelisting (twitter.com, x.com)
+   - Domain whitelisting (x.com)
 
 2. **Command Injection Prevention**
    - Uses `execFile()` with argument arrays
@@ -187,4 +187,4 @@ Identified but not implemented (beyond scope):
 
 ## Conclusion
 
-This project successfully delivers a complete, production-ready Twitter/X thread to audio converter. All requirements from the problem statement have been met with additional enhancements for security, documentation, and deployment. The codebase follows best practices and is ready for production use.
+This project successfully delivers a complete, production-ready X thread to audio converter. All requirements from the problem statement have been met with additional enhancements for security, documentation, and deployment. The codebase follows best practices and is ready for production use.

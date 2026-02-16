@@ -1,6 +1,6 @@
 # Listen Thread 🎧
 
-Convierte hilos de Twitter/X a audio mediante text-to-speech.
+Convierte hilos de X a audio mediante text-to-speech.
 
 ## Características
 
@@ -97,12 +97,12 @@ Para configurar el deploy (VM, claves SSH, secrets de GitHub, setup único en la
 
 ### POST /api/convert
 
-Convierte un hilo de Twitter/X a audio.
+Convierte un hilo de X a audio.
 
 **Request:**
 ```json
 {
-  "url": "https://twitter.com/username/status/1234567890",
+  "url": "https://x.com/username/status/1234567890",
   "gender": "male"
 }
 ```
@@ -168,7 +168,7 @@ Si no configuras Speechify, se usa en este orden: Google Cloud TTS (si tienes `G
 
 ## Notas
 
-- El scraping puede fallar si Twitter/X cambia su estructura HTML
+- El scraping puede fallar si X cambia su estructura HTML
 - Sin `SPEECHIFY_API_KEY` ni credenciales de Google Cloud TTS, se usa espeak como fallback
 - Los archivos de audio se almacenan en la carpeta `audio/`
 - La limpieza de archivos merged antiguos es automática: configura `AUDIO_MAX_AGE_HOURS` (ej. `24`) en `.env`; `0` la desactiva

@@ -9,8 +9,7 @@ npm start
 
 2. Open http://localhost:3000 in your browser
 
-3. Paste a Twitter/X thread URL, for example:
-   - `https://twitter.com/username/status/1234567890`
+3. Paste an X thread URL, for example:
    - `https://x.com/username/status/1234567890`
 
 4. Click "Convertir a Audio"
@@ -27,7 +26,7 @@ npm start
 curl -X POST http://localhost:3000/api/convert \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://twitter.com/username/status/1234567890"
+    "url": "https://x.com/username/status/1234567890"
   }'
 ```
 
@@ -129,7 +128,7 @@ GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
 ### Scraping Fails
 
 If scraping fails, it may be due to:
-- Twitter/X changing their HTML structure
+- X changing their HTML structure
 - Rate limiting or blocking
 - Network connectivity issues
 

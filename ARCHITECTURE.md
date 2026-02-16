@@ -57,7 +57,7 @@
 
 ### 2. Scraper Module (src/scraper.js)
 
-**Purpose**: Extract tweets from Twitter/X threads
+**Purpose**: Extract tweets from X threads
 
 **Technology**: Playwright (headless Chromium)
 
@@ -72,7 +72,7 @@
 **Key Features**:
 - Filters tweets by original poster
 - Handles dynamic content loading
-- Uses proper selectors for Twitter/X DOM
+- Uses proper selectors for X DOM
 
 ### 3. Text Normalizer (src/textNormalizer.js)
 
@@ -193,7 +193,7 @@ listen-thread/
 
 1. **Input Validation**
    - URL format validation
-   - Twitter/X domain check
+   - X domain check
 
 2. **Command Injection Prevention**
    - Use `execFile()` instead of `exec()`
@@ -278,7 +278,7 @@ listen-thread/
    - Network timeouts
    - Invalid URLs
    - Private/deleted tweets
-   - Changed Twitter/X structure
+   - Changed X structure
 
 2. **TTS Errors**
    - Missing credentials
