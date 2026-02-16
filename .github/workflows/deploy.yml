@@ -46,6 +46,12 @@ jobs:
           fi
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      - name: Ensure rsync on VM
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            'command -v rsync >/dev/null 2>&1 || (sudo apt-get update -qq && sudo apt-get install -y rsync)'
+
       - name: Rsync to VM
         run: |
           rsync -avz --delete \
@@ -63,10 +69,10 @@ jobs:
       - name: Deploy on VM (install, playwright, pm2)
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new \
-            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" 'set -e
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" "bash -lc 'set -e
             cd /var/www/listen-thread
             npm ci --omit=dev
             npx playwright install chromium --with-deps
             pm2 delete listen-thread || true
             pm2 start index.js --name listen-thread
-            pm2 save'
+            pm2 save'"

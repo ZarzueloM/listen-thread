@@ -218,7 +218,8 @@ Do this once. Use a dedicated key pair only for deploy (not your personal SSH ke
 - **GitHub**
   - Add the four secrets above.
 - **VM one-time setup**
-  - Install Node.js 18+ (e.g. NodeSource or nvm).
+  - Install Node.js 18+ (e.g. NodeSource or nvm). If you use nvm, the workflow runs remote commands in a login shell (`bash -lc`) so nvm’s PATH is available.
+  - Install rsync (required for deploy): `sudo apt-get install -y rsync`. The workflow can install it automatically if the user has passwordless sudo.
   - Install FFmpeg: `apt-get install -y ffmpeg`.
   - Optional: `apt-get install -y espeak` for TTS fallback without Speechify.
   - Install PM2: `npm install -g pm2`.
