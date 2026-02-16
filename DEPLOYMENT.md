@@ -1,17 +1,18 @@
 # Deployment Guide
 
-This guide covers deploying the Listen Thread application to various platforms.
+Guía para desarrollo local y despliegue en una VM mediante GitHub Actions.
 
 ## Prerequisites
 
-- Node.js 20 or 18 (LTS)
-- FFmpeg installed
-- espeak installed (for TTS fallback)
+- Node.js 20 o 18 (LTS)
+- FFmpeg
 - Git
+- espeak (opcional, para TTS fallback sin Speechify)
 
 ## Local Development
 
-1. Clone and install:
+1. Clonar e instalar:
+
 ```bash
 git clone https://github.com/ZarzueloM/listen-thread.git
 cd listen-thread
@@ -19,306 +20,156 @@ npm install
 npx playwright install chromium
 ```
 
-2. Start the server:
+2. Arrancar el servidor:
+
 ```bash
 npm start
 ```
 
-3. Open http://localhost:3000
+3. Abrir http://localhost:3000
 
-## Production Deployment
+## Production: Deploy to VM with GitHub Actions
 
-### Using Docker (Recommended)
+El repositorio incluye un workflow (`.github/workflows/deploy.yml`) que despliega en una VM en cada push a `main`. Usa SSH, rsync y PM2 en la VM (p. ej. Google Cloud).
 
-Create a `Dockerfile`:
+**Ruta en la VM:** `/var/www/listen-thread`
 
-```dockerfile
-FROM node:20-slim
+### Secrets necesarios
 
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    espeak \
-    chromium \
-    && rm -rf /var/lib/apt/lists/*
+En el repo: **Settings** → **Secrets and variables** → **Actions**:
 
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install Node dependencies
-RUN npm ci --only=production
-
-# Install Playwright
-RUN npx playwright install chromium --with-deps
-
-# Copy application files
-COPY . .
-
-# Create audio directory
-RUN mkdir -p audio
-
-EXPOSE 3000
-
-CMD ["npm", "start"]
-```
-
-Build and run:
-```bash
-docker build -t listen-thread .
-docker run -p 3000:3000 listen-thread
-```
-
-### Deploy to Heroku
-
-1. Create a `Procfile`:
-```
-web: npm start
-```
-
-2. Add buildpacks:
-```bash
-heroku buildpacks:add heroku/nodejs
-heroku buildpacks:add https://github.com/jonathanong/heroku-buildpack-ffmpeg-latest.git
-```
-
-3. Deploy:
-```bash
-git push heroku main
-```
-
-### Deploy to Railway
-
-1. Connect your GitHub repository to Railway
-2. Add environment variables if needed
-3. Railway will auto-detect and deploy Node.js app
-
-### Deploy to Vercel
-
-**Note:** Vercel has limitations with file system operations. Consider using serverless functions with external storage.
-
-### Deploy to DigitalOcean
-
-1. Create a Droplet with Ubuntu
-2. SSH into the server
-3. Install Node.js, FFmpeg, and espeak:
-```bash
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
-sudo apt-get install -y nodejs ffmpeg espeak
-```
-
-4. Clone and setup:
-```bash
-git clone https://github.com/ZarzueloM/listen-thread.git
-cd listen-thread
-npm install
-npx playwright install chromium --with-deps
-```
-
-5. Use PM2 for process management:
-```bash
-sudo npm install -g pm2
-pm2 start index.js --name listen-thread
-pm2 startup
-pm2 save
-```
-
-6. Setup Nginx as reverse proxy:
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### Deploy to VM with GitHub Actions (e.g. Google Cloud)
-
-The repo includes a workflow (`.github/workflows/deploy.yml`) that deploys to a VM on every push to `main`. It uses SSH + rsync and PM2 on the VM.
-
-**Path on VM:** `/var/www/listen-thread`
-
-**Secrets required** (Settings → Secrets and variables → Actions):
-
-| Secret | Description |
+| Secret | Descripción |
 |--------|-------------|
-| `SSH_PRIVATE_KEY` | Full private key (including `-----BEGIN ... END ...-----`) for SSH to the VM. If you get "Load key ... error in libcrypto", re-paste the key (no extra spaces/newlines) or use base64: run `base64 -w0 your_key` (Linux) or `base64 < your_key | tr -d '\n'` (macOS) and set the secret to `base64:` + that output. |
-| `SSH_USERNAME` | SSH user on the VM (e.g. Debian default user) |
-| `SSH_HOST` | VM IP or hostname |
-| `DOTENV_CONTENT` | Full contents of `.env` for production (e.g. `PORT=3000`, `SPEECHIFY_API_KEY=...`, `AUDIO_MAX_AGE_HOURS=24`) |
+| `SSH_PRIVATE_KEY` | Clave privada SSH completa (incluyendo `-----BEGIN ... END ...-----`). Si aparece "Load key ... error in libcrypto", pegar de nuevo la clave o usar base64: `base64 -w0 tu_clave` (Linux) o `base64 < tu_clave \| tr -d '\n'` (macOS) y guardar el secret como `base64:` + esa salida. |
+| `SSH_USERNAME` | Usuario SSH en la VM |
+| `SSH_HOST` | IP o hostname de la VM |
+| `DOTENV_CONTENT` | Contenido completo del `.env` de producción (véase ejemplo más abajo). El workflow escribe este contenido en `/var/www/listen-thread/.env` en cada deploy. |
 
-**SSH keys for GitHub Actions — step-by-step**
+**Ejemplo de contenido del secret `DOTENV_CONTENT`** (literal, sin comillas extra):
 
-Do this once. Use a dedicated key pair only for deploy (not your personal SSH key).
+```
+PORT=3000
+NODE_ENV=production
+SPEECHIFY_API_KEY=tu_api_key_si_la_tienes
+AUDIO_MAX_AGE_HOURS=24
+AUDIO_MIN_AGE_MINUTES=15
+```
 
-1. **Create the key pair (on your machine)**
+### Qué se transfiere (rsync)
+
+El workflow excluye para no sobrescribir ni subir archivos innecesarios: `node_modules/`, `.env` (se genera en la VM desde el secret), `.git/`, `audio/`. El directorio `audio` en la VM lo crea la app al arrancar si no existe.
+
+### Claves SSH para GitHub Actions (paso a paso)
+
+Usar un par de claves solo para este deploy.
+
+1. **Crear el par (en tu máquina)**
 
    ```bash
    cd ~/.ssh
    ssh-keygen -t ed25519 -C "github-actions-deploy" -f deploy_listen_thread -N ""
    ```
 
-   This creates:
-   - `deploy_listen_thread` — **private** key (→ GitHub Secret)
-   - `deploy_listen_thread.pub` — **public** key (→ VM)
+   Se generan `deploy_listen_thread` (privada → GitHub Secret) y `deploy_listen_thread.pub` (pública → VM).
 
-2. **Install the public key on the VM**
+2. **Instalar la clave pública en la VM**
 
-   From your machine, with your normal SSH access to the VM. If you use a **key** (no password), set `MY_KEY` to that key path and use it in every command:
+   Si te conectas con otra clave (sin contraseña):
 
    ```bash
-   # Replace USER, VM_IP and, if you use a key, MY_KEY (e.g. ~/.ssh/id_rsa or ~/.ssh/google_compute_engine)
-   MY_KEY=~/.ssh/tu_clave_actual   # la que ya usas para entrar a la VM
+   MY_KEY=~/.ssh/tu_clave_actual
    ssh -i "$MY_KEY" USER@VM_IP "mkdir -p ~/.ssh && chmod 700 ~/.ssh"
    scp -i "$MY_KEY" ~/.ssh/deploy_listen_thread.pub USER@VM_IP:~/.ssh/
    ssh -i "$MY_KEY" USER@VM_IP "cat ~/.ssh/deploy_listen_thread.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && rm ~/.ssh/deploy_listen_thread.pub"
    ```
 
-   Or manually: SSH in with your key (`ssh -i "$MY_KEY" USER@VM_IP`), then edit `~/.ssh/authorized_keys` and paste the **entire** content of `deploy_listen_thread.pub` as a single line.
+   **Solo consola SSH de Google Cloud:** En tu máquina guarda la clave privada en un archivo y ejecuta `ssh-keygen -y -f deploy_key` para obtener la línea de la clave pública. En la consola SSH de la VM: `mkdir -p ~/.ssh && echo 'LÍNEA_PÚBLICA' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys`.
 
-   **If you only use Google Cloud in-browser SSH** (no local SSH): you have the private key as text and need to get the public key and add it on the VM. On your **local** machine: save the private key to a file (e.g. `deploy_key`), then run `ssh-keygen -y -f deploy_key` — the output is the public key (one line). Copy it. In the **Google Cloud console** → Compute Engine → your VM → **SSH** (browser window). In that terminal run: `mkdir -p ~/.ssh && echo 'PEGA_AQUÍ_LA_LÍNEA_PÚBLICA' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys`. Replace `PEGA_AQUÍ_LA_LÍNEA_PÚBLICA` with the line you got from `ssh-keygen -y`. Then you can delete the local `deploy_key` file if you prefer.
-
-3. **Test login from your machine (same key GitHub will use)**
+3. **Probar conexión**
 
    ```bash
    ssh -i ~/.ssh/deploy_listen_thread USER@VM_IP "echo OK"
    ```
 
-   You must see `OK`. If you get "Permission denied (publickey)", the public key is not correctly in `authorized_keys` or the user/path is wrong.
+   Debe imprimir `OK`.
 
-4. **Put the private key in GitHub Secrets**
+4. **Guardar la clave privada en GitHub**
 
-   - Repo → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**
-   - Name: `SSH_PRIVATE_KEY`
-   - Value: either paste the **entire** content of `deploy_listen_thread` (from `-----BEGIN OPENSSH PRIVATE KEY-----` to `-----END OPENSSH PRIVATE KEY-----`), or use base64 to avoid paste issues:
-     ```bash
-     # Linux
-     echo -n "base64:$(base64 -w0 ~/.ssh/deploy_listen_thread)"
-     # Copy the output and paste as the secret value (including the "base64:" prefix)
-     ```
-   - Also create/check: `SSH_USERNAME` = same `USER` as above, `SSH_HOST` = same `VM_IP` (or hostname).
+   Secret `SSH_PRIVATE_KEY`: pegar todo el contenido de `deploy_listen_thread`, o usar el valor `base64:` + salida de `base64 -w0 ~/.ssh/deploy_listen_thread`. Crear también `SSH_USERNAME` y `SSH_HOST`.
 
-5. **Trigger the workflow** (push to `main`) and check the Actions tab.
+5. **Disparar el deploy** (push a `main`) y revisar la pestaña Actions.
 
-**Checklist — only you can do (VM and GitHub):**
+### Orden recomendado (desde cero)
 
-- **VM and access**
-  - Create the instance (e.g. Google Cloud: Debian 12, 2 vCPU, 1 GB RAM, 10 GB disk) and allow SSH (port 22).
-  - Generate an SSH key pair for GitHub Actions; add the **public** key to the VM (`~/.ssh/authorized_keys`).
-  - Store the **private** key in the repo secret `SSH_PRIVATE_KEY`.
-- **GitHub**
-  - Add the four secrets above.
-- **VM one-time setup**
-  - **Node.js 20 (recomendado: instalación global, no nvm).** En Debian/Ubuntu, usar NodeSource para que `node`/`npm` estén en el PATH en cualquier sesión (incl. SSH no interactivo):
+1. Crear la VM (p. ej. Google Cloud: Debian 12, 2 vCPU, 1 GB RAM, 10 GB disco) y asegurar acceso SSH (puerto 22 abierto).
+2. Generar el par de claves para GitHub Actions e instalar la clave **pública** en la VM (`~/.ssh/authorized_keys`). Guardar la **privada** para el paso 4.
+3. Preparación única en la VM: Node.js 20, rsync, FFmpeg, dependencias de Playwright/Chromium, PM2, directorio `/var/www/listen-thread` con permisos para tu usuario.
+4. En GitHub: crear los cuatro secrets (`SSH_PRIVATE_KEY`, `SSH_USERNAME`, `SSH_HOST`, `DOTENV_CONTENT`).
+5. Primer push a `main`; revisar el workflow en Actions. Luego, en la VM: ejecutar `pm2 startup` y aplicar el comando que indique (con sudo); después `pm2 save`.
+
+### Checklist en la VM y en GitHub
+
+- **VM y acceso:** Crear la instancia (p. ej. Google Cloud: Debian 12, 2 vCPU, 1 GB RAM, 10 GB disco), abrir puerto 22. Añadir la clave pública del deploy a `~/.ssh/authorized_keys` y la privada en el secret `SSH_PRIVATE_KEY`.
+- **GitHub:** Configurar los cuatro secrets.
+- **Setup único en la VM:**
+  - Node.js 20 (global, no nvm). Debian/Ubuntu:
     ```bash
     curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
     sudo apt-get install -y nodejs
     ```
-    Si ya tenías nvm y quieres quitarlo: elimina las líneas de nvm de `~/.bashrc` (y opcionalmente `rm -rf ~/.nvm`), luego instala Node con los comandos de arriba. Comprueba con `which node` y `node -v`.
-  - Install rsync (required for deploy): `sudo apt-get install -y rsync`. The workflow can install it automatically if the user has passwordless sudo.
-  - Install FFmpeg: `sudo apt-get install -y ffmpeg`.
-  - Install Playwright/Chromium system dependencies (once): `npx playwright install-deps chromium`. The workflow only runs `playwright install chromium` (browser binary).
-  - Optional: `sudo apt-get install -y espeak` for TTS fallback without Speechify.
-  - Install PM2: `sudo npm install -g pm2`.
-  - Create deploy dir: `sudo mkdir -p /var/www/listen-thread && sudo chown $USER:$USER /var/www/listen-thread`.
-  - After the first successful deploy, run `pm2 startup` (apply the suggested command), then `pm2 save`.
-- **Check**
-  - Test SSH: `ssh -i <private_key> <SSH_USERNAME>@<SSH_HOST>`.
-  - After a push to `main`, check the Actions tab and on the VM run `pm2 logs listen-thread`.
+  - rsync: `sudo apt-get install -y rsync` (el workflow puede instalarlo si hay sudo sin contraseña).
+  - FFmpeg: `sudo apt-get install -y ffmpeg`.
+  - Dependencias de Playwright/Chromium (una vez): `npx playwright install-deps chromium`.
+  - Opcional espeak: `sudo apt-get install -y espeak`.
+  - PM2: `sudo npm install -g pm2`.
+  - Directorio de deploy: `sudo mkdir -p /var/www/listen-thread && sudo chown $USER:$USER /var/www/listen-thread`.
+  - **PM2 (primera vez):** Tras el primer deploy (o tras arrancar la app una vez), ejecutar `pm2 startup` en la VM; te mostrará un comando para ejecutar con sudo (cópialo y ejecútalo). Luego `pm2 save`. Así el proceso se levanta al reiniciar la VM. El workflow ya hace `pm2 restart`/`start` y `pm2 save` en cada deploy.
+- **Comprobar:** Probar SSH desde tu máquina con la clave del deploy: `ssh -i <clave_privada> <SSH_USERNAME>@<SSH_HOST>`. Tras un push a `main`, revisar el run en la pestaña Actions y en la VM `pm2 logs listen-thread`.
 
-**Note (1 GB RAM):** If the app or Chromium runs out of memory, consider adding `--disable-dev-shm-usage` and `--disable-gpu` to the Chromium launch args in `src/scraper.js`.
+**Nota (1 GB RAM):** Si la app o Chromium se quedan sin memoria, se pueden añadir `--disable-dev-shm-usage` y `--disable-gpu` a los argumentos de Chromium en `src/scraper.js`.
 
 ## Environment Variables
 
-Set these in your deployment platform:
+Configurar en producción (secret `DOTENV_CONTENT` o `.env` en la VM):
 
 ```env
 PORT=3000
 NODE_ENV=production
 
-# TTS: Speechify (primary). When set, voices are: male -> carlos, female -> carmen (selectable in the UI).
-SPEECHIFY_API_KEY=your_api_key  # Optional; get it at https://speechify.com
+# TTS: Speechify. Si está definido, se usan voces Carlos/Carmen.
+SPEECHIFY_API_KEY=your_api_key   # Opcional
 
-# TTS fallback when SPEECHIFY_API_KEY is not set
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json  # Optional
+# Fallback TTS sin Speechify
+GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json   # Opcional
 ```
 
-**TTS priority:** If `SPEECHIFY_API_KEY` is set, Speechify is used and the user can choose voice gender (Masculino/Carlos or Femenino/Carmen) in the web UI. Otherwise the app uses Google Cloud TTS (if configured) or espeak.
+Si existe `SPEECHIFY_API_KEY` se usa Speechify; si no, Google Cloud TTS o espeak.
 
 ## Post-Deployment
 
-### Setup SSL with Let's Encrypt
+### SSL con Let's Encrypt
 
 ```bash
 sudo apt-get install certbot python3-certbot-nginx
-sudo certbot --nginx -d your-domain.com
+sudo certbot --nginx -d tu-dominio.com
 ```
 
-### Monitor Logs
+### Logs
 
-Using PM2:
 ```bash
 pm2 logs listen-thread
 ```
 
-Using Docker:
-```bash
-docker logs -f <container-id>
-```
+### Limpieza de audio
 
-### Cleanup Old Audio Files
+La app elimina automáticamente los MP3 fusionados más viejos que el TTL configurado.
 
-The app includes **built-in cleanup**: merged MP3 files older than a configurable TTL are removed automatically.
+- `AUDIO_MAX_AGE_HOURS` en `.env` (ej. `24`). `0` para desactivar.
+- Los archivos más recientes que `AUDIO_MIN_AGE_MINUTES` (por defecto 15) no se borran.
+- La limpieza se ejecuta al arrancar y cada hora.
 
-- Set `AUDIO_MAX_AGE_HOURS` in `.env` (e.g. `24` for 24 hours). Use `0` to disable.
-- Files newer than `AUDIO_MIN_AGE_MINUTES` (default 15) are never deleted, so a file that was just created and is being played is safe.
-- Cleanup runs at server startup and then every hour.
-- Only `merged_*.mp3` files are removed; chunk files are already deleted right after each conversion.
+## Security
 
-Example:
-```bash
-AUDIO_MAX_AGE_HOURS=24
-```
-
-**Optional (external cron):** If you prefer to rely on cron instead of the built-in scheduler:
-
-```bash
-# Add to crontab (crontab -e)
-0 2 * * * find /path/to/listen-thread/audio -name "merged_*.mp3" -mtime +1 -delete
-```
-
-If using cron, you can set `AUDIO_MAX_AGE_HOURS=0` to disable the in-app cleanup.
-
-## Scaling Considerations
-
-1. **Rate Limiting**: Add rate limiting to prevent abuse
-2. **Queue System**: Use Bull or BullMQ for processing jobs
-3. **Cloud Storage**: Store audio files in S3/Cloud Storage
-4. **Load Balancing**: Use multiple instances behind a load balancer
-5. **Caching**: Cache frequently requested threads
-
-## Security Recommendations
-
-1. Add API authentication
-2. Implement rate limiting
-3. Validate and sanitize all inputs
-4. Keep dependencies updated
-5. Use HTTPS in production
-6. Set up monitoring and alerts
-
-## Monitoring
-
-Consider using:
-- PM2 Plus for process monitoring
-- New Relic or DataDog for application monitoring
-- Sentry for error tracking
-- Google Analytics for usage tracking
+- Usar HTTPS en producción.
+- Validar y sanitizar entradas.
+- Mantener dependencias actualizadas.
