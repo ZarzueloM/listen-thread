@@ -222,27 +222,22 @@ listen-thread/
 
 ### Improvement Opportunities
 
-1. **Add Queue System**
-   - Use Bull/BullMQ for job queue
-   - Process requests asynchronously
-   - Handle multiple concurrent requests
-
-2. **Cloud Storage**
+1. **Cloud Storage**
    - Store audio in S3/Cloud Storage
    - Generate signed URLs
    - Automatic cleanup policies
 
-3. **Caching**
+2. **Caching**
    - Cache converted threads
    - Use URL as cache key
    - Reduce duplicate processing
 
-4. **Horizontal Scaling**
+3. **Horizontal Scaling**
    - Stateless server design allows multiple instances
    - Load balancer distributes requests
    - Shared storage for audio files
 
-5. **Rate Limiting** (implementado)
+4. **Rate Limiting** (implementado)
    - Límites por IP en `/api/convert` y en el resto de la API; configurables por env.
    - Mejoras futuras: store Redis para múltiples instancias, límites por usuario/API key.
 
