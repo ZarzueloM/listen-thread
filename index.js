@@ -15,22 +15,44 @@ const PORT = process.env.PORT || 3000;
 // Trust proxy for correct IP detection when deployed behind a proxy
 app.set('trust proxy', 1);
 
+// Rate limit config (env with defaults; lightweight for 1 instance / 1 GB RAM)
+const parseEnvInt = (key, defaultVal) => {
+  const v = process.env[key];
+  if (v === undefined || v === '') return defaultVal;
+  const n = parseInt(v, 10);
+  return Number.isNaN(n) || n < 0 ? defaultVal : n;
+};
+const RATE_LIMIT_CONVERT_WINDOW_MS = parseEnvInt('RATE_LIMIT_CONVERT_WINDOW_MS', 15 * 60 * 1000);
+const RATE_LIMIT_CONVERT_MAX = parseEnvInt('RATE_LIMIT_CONVERT_MAX', 5);
+const RATE_LIMIT_API_WINDOW_MS = parseEnvInt('RATE_LIMIT_API_WINDOW_MS', 15 * 60 * 1000);
+const RATE_LIMIT_API_MAX = parseEnvInt('RATE_LIMIT_API_MAX', 100);
+
+// Shared 429 handler: JSON body and retryAfter (seconds)
+function rateLimitHandler(req, res, _next, optionsUsed) {
+  const info = req.rateLimit;
+  const windowSec = optionsUsed?.windowMs ? Math.ceil(optionsUsed.windowMs / 1000) : 900;
+  const retryAfter = info?.resetTime
+    ? Math.max(0, Math.ceil((info.resetTime - Date.now()) / 1000))
+    : windowSec;
+  res.status(429).json({ error: 'Too many requests', retryAfter });
+}
+
 // Rate limiting for the /api/convert endpoint (stricter)
 const convertLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // Limit each IP to 5 requests per window
-  message: 'Too many requests from this IP, please try again after 15 minutes',
-  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
-  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+  windowMs: RATE_LIMIT_CONVERT_WINDOW_MS,
+  max: RATE_LIMIT_CONVERT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: rateLimitHandler,
 });
 
 // General rate limiting for other API endpoints (more lenient)
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per window
-  message: 'Too many requests from this IP, please try again after 15 minutes',
+  windowMs: RATE_LIMIT_API_WINDOW_MS,
+  max: RATE_LIMIT_API_MAX,
   standardHeaders: true,
   legacyHeaders: false,
+  handler: rateLimitHandler,
 });
 
 // Resolve absolute paths for static directories

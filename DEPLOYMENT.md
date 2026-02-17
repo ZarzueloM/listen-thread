@@ -194,9 +194,17 @@ SPEECHIFY_API_KEY=your_api_key   # Opcional
 
 # Fallback TTS sin Speechify
 GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json   # Opcional
+
+# Rate limiting (opcional; por defecto: 5 req/15 min convert, 100 req/15 min API)
+RATE_LIMIT_CONVERT_MAX=5
+RATE_LIMIT_CONVERT_WINDOW_MS=900000
+RATE_LIMIT_API_MAX=100
+RATE_LIMIT_API_WINDOW_MS=900000
 ```
 
 Si existe `SPEECHIFY_API_KEY` se usa Speechify; si no, Google Cloud TTS o espeak.
+
+**Rate limiting:** Límites por IP en memoria (sin Redis, adecuado para 1 instancia y 1 GB RAM). `/api/convert` usa `RATE_LIMIT_CONVERT_*`; el resto de la API (p. ej. `/api/health`) usa `RATE_LIMIT_API_*`. Las respuestas 429 incluyen `retryAfter` en segundos.
 
 ## Post-Deployment
 
@@ -226,3 +234,4 @@ La app elimina automáticamente los MP3 fusionados más viejos que el TTL config
 - Usar HTTPS en producción.
 - Validar y sanitizar entradas.
 - Mantener dependencias actualizadas.
+- Rate limiting activo por IP (configurable por env); en producción puede ajustarse según carga.

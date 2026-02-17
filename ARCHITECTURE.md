@@ -208,13 +208,17 @@ listen-thread/
    - Playwright runs in sandboxed browser
    - No user input directly to shell
 
+5. **Rate Limiting**
+   - Límites por IP en `/api/convert` (p. ej. 5 req/15 min) y en endpoints API (p. ej. 100 req/15 min).
+   - Respuesta 429 con JSON `{ error, retryAfter }` y cabeceras estándar `RateLimit-*`.
+
 ## Scalability Considerations
 
 ### Current Limitations
 - Sequential processing (one request at a time)
 - Files stored on local filesystem
 - No request queuing
-- No rate limiting
+- Rate limiting por IP en memoria (configurable por env; sin store distribuido)
 
 ### Improvement Opportunities
 
@@ -238,10 +242,9 @@ listen-thread/
    - Load balancer distributes requests
    - Shared storage for audio files
 
-5. **Rate Limiting**
-   - Prevent abuse
-   - Per-IP or per-user limits
-   - Queue management
+5. **Rate Limiting** (implementado)
+   - Límites por IP en `/api/convert` y en el resto de la API; configurables por env.
+   - Mejoras futuras: store Redis para múltiples instancias, límites por usuario/API key.
 
 ## Dependencies
 
@@ -307,7 +310,7 @@ All errors are caught and returned as JSON with appropriate HTTP status codes.
 
 3. **API Improvements**
    - Authentication
-   - Rate limiting
+   - Rate limiting con store distribuido (Redis) si se escala horizontalmente
    - Webhooks for completion
    - Progress updates via WebSocket
 
