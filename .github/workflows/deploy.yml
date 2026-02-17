@@ -44,6 +44,8 @@ jobs:
             echo "::error::SSH_PRIVATE_KEY invalid or corrupted. Fix: 1) Regenerate: ssh-keygen -t ed25519 -C deploy -f deploy_key -N \"\" 2) Add public key to VM authorized_keys 3) Store private key in secret. Or use base64: run 'base64 -w0 deploy_key' and set secret to 'base64:' + that output."
             exit 1
           fi
+          echo "Deploy key fingerprint (debe coincidir con una entrada en VM authorized_keys):"
+          ssh-keygen -lf ~/.ssh/deploy_key
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       - name: Ensure rsync on VM

@@ -74,16 +74,36 @@ Usar un par de claves solo para este deploy.
 
 2. **Instalar la clave pública en la VM**
 
-   Si te conectas con otra clave (sin contraseña):
+   Si **`authorized_keys` no existe** en la VM, hay que crearlo. Elige una opción según cómo entres a la VM.
+
+   **Opción A — Entras por consola del proveedor (p. ej. Google Cloud “SSH”)**
+
+   - En **tu máquina** (donde tienes la clave privada del deploy), obtén la línea pública:
+     ```bash
+     ssh-keygen -y -f ~/.ssh/deploy_listen_thread
+     ```
+     Copia la línea entera (empieza por `ssh-ed25519` o `ssh-rsa`).
+   - En la **VM** (consola en el navegador), ejecuta (sustituye `TU_USUARIO` por el usuario con el que estás y pega la línea que copiaste en lugar de `LÍNEA_PÚBLICA`):
+     ```bash
+     mkdir -p ~/.ssh
+     chmod 700 ~/.ssh
+     echo 'LÍNEA_PÚBLICA' >> ~/.ssh/authorized_keys
+     chmod 600 ~/.ssh/authorized_keys
+     ```
+     Ejemplo: `echo 'ssh-ed25519 AAAAC3... usuario@host' >> ~/.ssh/authorized_keys`
+
+   **Opción B — Entras desde tu máquina por SSH con otra clave**
 
    ```bash
    MY_KEY=~/.ssh/tu_clave_actual
-   ssh -i "$MY_KEY" USER@VM_IP "mkdir -p ~/.ssh && chmod 700 ~/.ssh"
-   scp -i "$MY_KEY" ~/.ssh/deploy_listen_thread.pub USER@VM_IP:~/.ssh/
-   ssh -i "$MY_KEY" USER@VM_IP "cat ~/.ssh/deploy_listen_thread.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && rm ~/.ssh/deploy_listen_thread.pub"
-   ```
+   USER=tu_usuario_en_la_vm
+   VM_IP=la_ip_de_la_vm
 
-   **Solo consola SSH de Google Cloud:** En tu máquina guarda la clave privada en un archivo y ejecuta `ssh-keygen -y -f deploy_key` para obtener la línea de la clave pública. En la consola SSH de la VM: `mkdir -p ~/.ssh && echo 'LÍNEA_PÚBLICA' >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys`.
+   ssh -i "$MY_KEY" "$USER@$VM_IP" "mkdir -p ~/.ssh && chmod 700 ~/.ssh"
+   scp -i "$MY_KEY" ~/.ssh/deploy_listen_thread.pub "$USER@$VM_IP:~/.ssh/"
+   ssh -i "$MY_KEY" "$USER@$VM_IP" "cat ~/.ssh/deploy_listen_thread.pub >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys && rm ~/.ssh/deploy_listen_thread.pub"
+   ```
+   (Si `authorized_keys` no existía, `>>` lo crea.)
 
 3. **Probar conexión**
 
@@ -98,6 +118,39 @@ Usar un par de claves solo para este deploy.
    Secret `SSH_PRIVATE_KEY`: pegar todo el contenido de `deploy_listen_thread`, o usar el valor `base64:` + salida de `base64 -w0 ~/.ssh/deploy_listen_thread`. Crear también `SSH_USERNAME` y `SSH_HOST`.
 
 5. **Disparar el deploy** (push a `main`) y revisar la pestaña Actions.
+
+### Si aparece "Permission denied (publickey)"
+
+Significa que la VM no acepta la clave que usa el workflow. Comprueba:
+
+1. **Mismo par de claves**  
+   La clave **pública** que está en la VM debe ser la pareja de la clave **privada** que guardaste en el secret `SSH_PRIVATE_KEY`.  
+   En tu máquina, con la misma clave privada que usaste para el secret:
+   ```bash
+   ssh-keygen -y -f ~/.ssh/deploy_listen_thread
+   ```
+   Esa salida (una línea que empieza por `ssh-ed25519` o `ssh-rsa`) debe estar **exactamente** en `~/.ssh/authorized_keys` **del usuario** con el que te conectas (`SSH_USERNAME`). Si en la VM usas otro usuario, la clave debe estar en **ese** usuario: `~usuario/.ssh/authorized_keys`.
+
+2. **Usuario correcto**  
+   El secret `SSH_USERNAME` debe ser el usuario de la VM en cuyo `$HOME` añadiste la clave (p. ej. si entras con `mariano@IP`, en la VM la clave está en `/home/mariano/.ssh/authorized_keys`; entonces `SSH_USERNAME` debe ser `mariano`).
+
+3. **Permisos en la VM**  
+   En la VM:
+   ```bash
+   chmod 700 ~/.ssh
+   chmod 600 ~/.ssh/authorized_keys
+   ```
+   El directorio `$HOME` no debe ser escribible por otros (p. ej. `chmod 755` o más restrictivo).
+
+4. **Probar desde tu máquina**  
+   Con la **misma** clave privada que está en el secret:
+   ```bash
+   ssh -i ~/.ssh/deploy_listen_thread TU_USUARIO@IP_VM "echo OK"
+   ```
+   Si aquí falla, el problema está en la VM o en el par de claves; si aquí funciona y en Actions no, revisa que el secret `SSH_PRIVATE_KEY` sea exactamente esa clave (sin líneas de más, sin cortar; si usas base64, que el secret sea `base64:` + la salida de `base64 -w0` del archivo).
+
+5. **Formato del secret**  
+   Si al pegar la clave en GitHub da problemas (espacios, encoding), guarda el secret en base64: en tu máquina `base64 -w0 ~/.ssh/deploy_listen_thread`, y en GitHub pon como valor del secret: `base64:` seguido de esa salida (todo junto, sin saltos de línea).
 
 ### Orden recomendado (desde cero)
 
