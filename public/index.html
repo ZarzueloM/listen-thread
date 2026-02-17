@@ -236,15 +236,48 @@
         .example strong {
             color: #555;
         }
+
+        .lang-selector {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .lang-selector button {
+            width: auto;
+            padding: 6px 12px;
+            font-size: 0.85em;
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+        .lang-selector button:hover {
+            background: #e0e0e0;
+            color: #333;
+            transform: none;
+            box-shadow: none;
+        }
+        .lang-selector button.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="lang-selector">
+            <button type="button" id="langEs" class="lang-btn" data-lang="es">ES</button>
+            <button type="button" id="langEn" class="lang-btn" data-lang="en">EN</button>
+        </div>
         <h1>🎧 Listen Thread</h1>
-        <p class="subtitle">Convierte hilos de X a audio</p>
+        <p id="i18n-subtitle" class="subtitle">Convierte hilos de X a audio</p>
 
         <div class="input-group">
-            <label for="tweetUrl">URL del hilo en X:</label>
+            <label id="i18n-label-url" for="tweetUrl">URL del hilo en X:</label>
             <div class="input-with-buttons">
                 <input 
                     type="text" 
@@ -257,7 +290,7 @@
         </div>
 
         <div class="input-group">
-            <label for="voiceGender">Género de la voz:</label>
+            <label id="i18n-label-voice" for="voiceGender">Género de la voz:</label>
             <select id="voiceGender">
                 <option value="male" selected>Masculino</option>
                 <option value="female">Femenino</option>
@@ -271,19 +304,146 @@
         <div id="status" class="status"></div>
 
         <div id="audioPlayer" class="audio-player">
-            <h3>🎵 Audio Generado</h3>
+            <h3 id="i18n-audio-generated">🎵 Audio Generado</h3>
             <audio id="audioElement" controls></audio>
             <div id="info" class="info"></div>
         </div>
 
         <div class="example">
-            <strong>Ejemplo de URL válida:</strong><br>
+            <strong id="i18n-example-title">Ejemplo de URL válida:</strong><br>
             https://x.com/usuario/status/1234567890<br><br>
-            Solo se aceptan URLs de hilos de X (`x.com`).
+            <span id="i18n-example-note">Solo se aceptan URLs de hilos de X (`x.com`).</span>
         </div>
     </div>
 
     <script>
+        const LANG_STORAGE_KEY = 'listen-thread-lang';
+
+        const translations = {
+            es: {
+                title: 'Listen Thread - X Thread to Speech',
+                subtitle: 'Convierte hilos de X a audio',
+                labelUrl: 'URL del hilo en X:',
+                placeholderUrl: 'https://x.com/usuario/status/123456789...',
+                titleClearUrl: 'Limpiar URL',
+                titlePaste: 'Pegar desde el portapapeles',
+                labelVoiceGender: 'Género de la voz:',
+                voiceMale: 'Masculino',
+                voiceFemale: 'Femenino',
+                btnConvert: 'Convertir a Audio',
+                statusLoading: 'Procesando hilo... Esto puede tomar un momento.',
+                statusSuccess: '¡Conversión exitosa!',
+                statusErrorRequiredUrl: 'Por favor ingresa una URL válida',
+                statusErrorInvalidUrl: 'Solo se aceptan URLs de hilos de X (x.com)',
+                statusErrorPaste: 'Error al pegar: Permiso denegado o portapapeles vacío.',
+                statusErrorProcess: 'Error al procesar el hilo',
+                statusErrorNoTweets: 'No se encontraron tweets en el hilo',
+                statusErrorRateLimit: 'Demasiadas peticiones. Intenta de nuevo en 15 minutos.',
+                audioGenerated: 'Audio Generado',
+                infoTweets: 'Tweets procesados:',
+                infoChunks: 'Chunks de audio:',
+                exampleTitle: 'Ejemplo de URL válida:',
+                exampleNote: 'Solo se aceptan URLs de hilos de X (`x.com`).'
+            },
+            en: {
+                title: 'Listen Thread - X Thread to Speech',
+                subtitle: 'Convert X threads to audio',
+                labelUrl: 'Thread URL on X:',
+                placeholderUrl: 'https://x.com/usuario/status/123456789...',
+                titleClearUrl: 'Clear URL',
+                titlePaste: 'Paste from clipboard',
+                labelVoiceGender: 'Voice gender:',
+                voiceMale: 'Male',
+                voiceFemale: 'Female',
+                btnConvert: 'Convert to Audio',
+                statusLoading: 'Processing thread... This may take a moment.',
+                statusSuccess: 'Conversion successful!',
+                statusErrorRequiredUrl: 'Please enter a valid URL',
+                statusErrorInvalidUrl: 'Only X thread URLs (x.com) are accepted',
+                statusErrorPaste: 'Paste error: Permission denied or empty clipboard.',
+                statusErrorProcess: 'Failed to process thread',
+                statusErrorNoTweets: 'No tweets found in thread',
+                statusErrorRateLimit: 'Too many requests. Please try again in 15 minutes.',
+                audioGenerated: 'Audio Generated',
+                infoTweets: 'Tweets processed:',
+                infoChunks: 'Audio chunks:',
+                exampleTitle: 'Valid URL example:',
+                exampleNote: 'Only X thread URLs (x.com) are accepted.'
+            }
+        };
+
+        const apiErrorMap = {
+            'Tweet URL is required': 'statusErrorRequiredUrl',
+            'Invalid X URL (only x.com is accepted)': 'statusErrorInvalidUrl',
+            'No tweets found in thread': 'statusErrorNoTweets',
+            'Failed to process thread': 'statusErrorProcess',
+            'Too many requests from this IP, please try again after 15 minutes': 'statusErrorRateLimit'
+        };
+
+        function getInitialLang() {
+            try {
+                const saved = localStorage.getItem(LANG_STORAGE_KEY);
+                if (saved === 'es' || saved === 'en') return saved;
+            } catch (e) {}
+            const browser = (navigator.language || navigator.userLanguage || '').toLowerCase();
+            if (browser.startsWith('en')) return 'en';
+            return 'es';
+        }
+
+        let currentLang = getInitialLang();
+
+        function setLanguage(lang) {
+            if (lang !== 'es' && lang !== 'en') return;
+            currentLang = lang;
+            try {
+                localStorage.setItem(LANG_STORAGE_KEY, lang);
+            } catch (e) {}
+            applyTranslations();
+            document.documentElement.lang = lang;
+            document.title = translations[lang].title;
+            document.querySelectorAll('.lang-selector button').forEach(function(btn) {
+                btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+            });
+        }
+
+        function applyTranslations() {
+            const t = translations[currentLang];
+            if (!t) return;
+            document.title = t.title;
+            var el = document.getElementById('i18n-subtitle');
+            if (el) el.textContent = t.subtitle;
+            el = document.getElementById('i18n-label-url');
+            if (el) el.textContent = t.labelUrl;
+            document.getElementById('tweetUrl').placeholder = t.placeholderUrl;
+            document.getElementById('clearUrlBtn').title = t.titleClearUrl;
+            document.getElementById('pasteUrlBtn').title = t.titlePaste;
+            el = document.getElementById('i18n-label-voice');
+            if (el) el.textContent = t.labelVoiceGender;
+            var sel = document.getElementById('voiceGender');
+            if (sel) {
+                sel.options[0].text = t.voiceMale;
+                sel.options[1].text = t.voiceFemale;
+            }
+            el = document.getElementById('convertBtn');
+            if (el) el.textContent = t.btnConvert;
+            el = document.getElementById('i18n-audio-generated');
+            if (el) el.textContent = '🎵 ' + t.audioGenerated;
+            el = document.getElementById('i18n-example-title');
+            if (el) el.textContent = t.exampleTitle;
+            el = document.getElementById('i18n-example-note');
+            if (el) el.textContent = t.exampleNote;
+        }
+
+        function t(key) {
+            return (translations[currentLang] && translations[currentLang][key]) || key;
+        }
+
+        function translateApiError(message) {
+            if (!message || typeof message !== 'string') return message;
+            var key = apiErrorMap[message.trim()];
+            return key ? t(key) : message;
+        }
+
         async function convertThread() {
             const urlInput = document.getElementById('tweetUrl');
             const statusDiv = document.getElementById('status');
@@ -295,14 +455,14 @@
             const url = urlInput.value.trim();
 
             if (!url) {
-                showStatus('error', 'Por favor ingresa una URL válida');
+                showStatus('error', t('statusErrorRequiredUrl'));
                 return;
             }
 
             // Validar que la URL sea de X (x.com)
             const xUrlPattern = /^https?:\/\/(www\.)?x\.com\//i;
             if (!xUrlPattern.test(url)) {
-                showStatus('error', 'Solo se aceptan URLs de hilos de X (x.com)');
+                showStatus('error', t('statusErrorInvalidUrl'));
                 return;
             }
 
@@ -311,7 +471,7 @@
             convertBtn.disabled = true;
 
             // Show loading
-            showStatus('loading', '<div class="loader"></div> Procesando hilo... Esto puede tomar un momento.');
+            showStatus('loading', '<div class="loader"></div> ' + t('statusLoading'));
 
             const gender = document.getElementById('voiceGender').value || 'male';
 
@@ -327,24 +487,24 @@
                 const data = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(data.error || 'Error al procesar el hilo');
+                    var rawMsg = (data && data.error) || (data && data.message);
+                    var errMsg = rawMsg ? translateApiError(rawMsg) : t('statusErrorProcess');
+                    throw new Error(errMsg);
                 }
 
                 // Show success
-                showStatus('success', '✓ ¡Conversión exitosa!');
+                showStatus('success', '✓ ' + t('statusSuccess'));
                 
                 // Show audio player
                 audioElement.src = data.audioUrl;
                 audioPlayer.style.display = 'block';
                 
                 // Show info
-                infoDiv.innerHTML = `
-                    <strong>Tweets procesados:</strong> ${data.tweets}<br>
-                    <strong>Chunks de audio:</strong> ${data.chunks}
-                `;
+                infoDiv.innerHTML = '<strong>' + t('infoTweets') + '</strong> ' + data.tweets + '<br><strong>' + t('infoChunks') + '</strong> ' + data.chunks;
 
             } catch (error) {
-                showStatus('error', '✗ ' + error.message);
+                var msg = (error && error.message) ? translateApiError(error.message) : t('statusErrorProcess');
+                showStatus('error', '✗ ' + msg);
             } finally {
                 convertBtn.disabled = false;
             }
@@ -376,9 +536,18 @@
                 document.getElementById('tweetUrl').value = text;
             } catch (err) {
                 console.error('Failed to read clipboard contents: ', err);
-                showStatus('error', 'Error al pegar: Permiso denegado o portapapeles vacío.');
+                showStatus('error', t('statusErrorPaste'));
             }
         }
+
+        document.getElementById('langEs').addEventListener('click', function() { setLanguage('es'); });
+        document.getElementById('langEn').addEventListener('click', function() { setLanguage('en'); });
+
+        applyTranslations();
+        document.documentElement.lang = currentLang;
+        document.querySelectorAll('.lang-selector button').forEach(function(btn) {
+            btn.classList.toggle('active', btn.getAttribute('data-lang') === currentLang);
+        });
     </script>
 </body>
 </html>
