@@ -7,7 +7,7 @@ Convierte hilos de X a audio mediante text-to-speech.
 - 🔍 **Scraping de hilos**: Extrae tweets del autor original (OP) usando Playwright
 - 🧹 **Normalización de texto**: Elimina URLs, emojis, "RT", menciones (@usuario)
 - 🔊 **Text-to-Speech**: Convierte el texto a audio (Speechify, Google TTS o espeak)
-- 🎙️ **Selección de género/voz**: Elige voz masculina (Carlos) o femenina (Carmen) desde la interfaz
+- 🎙️ **Selección de género/voz**: Elige voz masculina o femenina desde la interfaz
 - 📦 **División en chunks**: Divide textos largos en fragmentos de ~1500 caracteres
 - 🎵 **Unión de audio**: Combina todos los chunks en un único archivo MP3
 - 🌐 **API REST**: Backend con Node.js y Express
