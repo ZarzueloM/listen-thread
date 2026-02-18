@@ -1,4 +1,4 @@
-# Listen Thread 🎧
+# 🎧 Listen Thread
 
 Convierte hilos de X a audio mediante text-to-speech.
 
