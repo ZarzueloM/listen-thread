@@ -88,10 +88,8 @@ npm start
 
 ### High Priority
 - [ ] Add tests (unit and integration)
-- [ ] Implement rate limiting
 - [ ] Add support for more TTS engines
 - [ ] Improve error handling
-- [ ] Add request queue system
 
 ### Medium Priority
 - [ ] Support for Instagram threads

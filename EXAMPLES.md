@@ -30,6 +30,21 @@ curl -X POST http://localhost:3000/api/convert \
   }'
 ```
 
+Con voz femenina (Speechify: `carmen`; sin Speechify usa la voz femenina de Google/espeak):
+
+```bash
+curl -X POST http://localhost:3000/api/convert \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://x.com/username/status/1234567890",
+    "gender": "female"
+  }'
+```
+
+Parámetros del body:
+- `url` (requerido): URL del hilo en X.
+- `gender` (opcional): `"male"` (por defecto, voz `carlos`) o `"female"` (voz `carmen`).
+
 Response:
 ```json
 {
@@ -67,10 +82,42 @@ console.log(normalized); // "Hello! Check Test"
 
 ### Test Text-to-Speech
 
+El módulo TTS usa esta prioridad (ver `ARCHITECTURE.md`): **Speechify** → Google Cloud TTS → espeak+ffmpeg.
+
+**Con Speechify (recomendado, el que está implementado en el proyecto):**
+
 ```javascript
 const { textToSpeech } = require('./src/tts');
 
 async function test() {
+  // Voz por defecto: 'carlos'. Alternativa: 'carmen'
+  const audioFile = await textToSpeech('Hola mundo', 0, { voiceId: 'carlos' });
+  console.log('Audio creado:', audioFile);
+}
+
+test();
+```
+
+**Con voz femenina (Speechify o Google):**
+
+```javascript
+const { textToSpeech } = require('./src/tts');
+
+async function test() {
+  const audioFile = await textToSpeech('Hola mundo', 0, { voiceId: 'carmen' });
+  console.log('Audio creado:', audioFile);
+}
+
+test();
+```
+
+**Sin API keys (fallback espeak):**
+
+```javascript
+const { textToSpeech } = require('./src/tts');
+
+async function test() {
+  // Sin SPEECHIFY_API_KEY ni GOOGLE_APPLICATION_CREDENTIALS usa espeak + ffmpeg
   const audioFile = await textToSpeech('Hello world', 0);
   console.log('Audio created:', audioFile);
 }
@@ -87,15 +134,15 @@ const { mergeAudioFiles } = require('./src/audioMerger');
 async function test() {
   const files = [];
   
-  // Create chunks
+  // Crear fragmentos (Speechify/Google/espeak según configuración)
   for (let i = 0; i < 3; i++) {
-    const file = await textToSpeech(`Chunk ${i}`, i);
+    const file = await textToSpeech(`Fragmento ${i}`, i, { voiceId: 'carlos' });
     files.push(file);
   }
   
-  // Merge
+  // Unir
   const merged = await mergeAudioFiles(files);
-  console.log('Merged audio:', merged);
+  console.log('Audio unificado:', merged);
 }
 
 test();
@@ -103,45 +150,57 @@ test();
 
 ## Environment Variables
 
-Create a `.env` file:
+Crea un archivo `.env`:
 
 ```env
-# Server port (default: 3000)
+# Puerto del servidor (por defecto: 3000)
 PORT=3000
 
-# Google Cloud TTS credentials (optional)
-# If not set, the system will use espeak as fallback
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/credentials.json
+# Speechify (principal TTS en el proyecto)
+# Si está definido, se usa la API de Speechify para sintetizar voz
+SPEECHIFY_API_KEY=tu_api_key_de_speechify
+
+# Google Cloud TTS (opcional, fallback si no hay Speechify)
+# Si no está definido y no hay Speechify, se usa espeak como fallback
+GOOGLE_APPLICATION_CREDENTIALS=/ruta/a/credentials.json
 ```
 
-## Notes
+## Notas
 
-- The scraper works by loading the tweet in a headless browser (Playwright)
-- It extracts only tweets from the original poster (OP) of the thread
-- Text is normalized to remove URLs, emojis, mentions, and "RT"
-- Long texts are split into ~1500 character chunks for better TTS quality
-- Audio chunks are automatically merged into a single MP3 file
-- Generated audio files are stored in the `audio/` directory
+- El scraper carga el hilo en un navegador headless (Playwright).
+- Solo se extraen tweets del autor original (OP) del hilo.
+- El texto se normaliza: se eliminan URLs, emojis, menciones y "RT".
+- Los textos largos se dividen en fragmentos de ~1500 caracteres para mejor calidad TTS.
+- Los fragmentos de audio se unen automáticamente en un solo MP3 (ffmpeg).
+- Los archivos generados se guardan en el directorio `audio/`.
+
+**Motores TTS (orden de uso):**
+
+1. **Speechify**: si `SPEECHIFY_API_KEY` está definida. Voces: `carlos`, `carmen`.
+2. **Google Cloud TTS**: si `GOOGLE_APPLICATION_CREDENTIALS` está definido.
+3. **espeak + ffmpeg**: local, sin credenciales.
 
 ## Troubleshooting
 
 ### Scraping Fails
 
-If scraping fails, it may be due to:
-- X changing their HTML structure
-- Rate limiting or blocking
-- Network connectivity issues
+Si el scraping falla puede deberse a:
+- Cambios en la estructura HTML de X
+- Límites de tasa o bloqueos
+- Problemas de conectividad
 
 ### TTS Not Working
 
-If TTS is not working:
-- Ensure `espeak` and `ffmpeg` are installed
-- Check if Google Cloud credentials are properly configured (optional)
-- Verify file permissions in the `audio/` directory
+Si el TTS no funciona:
+- **Speechify**: comprueba que `SPEECHIFY_API_KEY` sea correcta y tenga cuota.
+- **Google**: comprueba que las credenciales en `GOOGLE_APPLICATION_CREDENTIALS` sean válidas.
+- **espeak**: asegúrate de tener instalados `espeak` y `ffmpeg`.
+- Comprueba permisos de escritura en el directorio `audio/`.
 
 ### Audio Quality
 
-To improve audio quality:
-- Set up Google Cloud Text-to-Speech API credentials
-- Adjust the chunk size in `index.js` (currently 1500 characters)
-- Modify TTS voice settings in `src/tts.js`
+Para mejorar la calidad del audio:
+- Usa **Speechify** con `SPEECHIFY_API_KEY` (es la opción principal del proyecto).
+- O configura Google Cloud Text-to-Speech con `GOOGLE_APPLICATION_CREDENTIALS`.
+- Ajusta el tamaño de fragmentos en `index.js` (p. ej. 1500 caracteres).
+- En `src/tts.js` puedes cambiar el `voiceId` (Speechify) o la voz de Google.

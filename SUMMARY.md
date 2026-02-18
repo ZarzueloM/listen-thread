@@ -142,7 +142,7 @@ From the problem statement:
 - **Memory**: ~200-500MB (including Chromium)
 - **Disk**: ~1-10MB per audio file
 - **Processing Time**: 10-30 seconds average
-- **Concurrent Requests**: Sequential (can be improved with queue)
+- **Concurrent Requests**: Sequential (one at a time)
 
 ## Deployment Ready
 
@@ -157,7 +157,6 @@ The application is production-ready with:
 ## Future Improvements
 
 Identified but not implemented (beyond scope):
-- Queue system for concurrency
 - Rate limiting
 - Cloud storage (S3/Cloud Storage)
 - Multiple platform support
