@@ -50,6 +50,7 @@ En el repo: **Settings** → **Secrets and variables** → **Actions**:
 ```
 PORT=3000
 NODE_ENV=production
+HOST=127.0.0.1
 SPEECHIFY_API_KEY=tu_api_key_si_la_tienes
 AUDIO_MAX_AGE_HOURS=24
 AUDIO_MIN_AGE_MINUTES=15
@@ -189,6 +190,9 @@ Configurar en producción (secret `DOTENV_CONTENT` o `.env` en la VM):
 PORT=3000
 NODE_ENV=production
 
+# Detrás de proxy (Nginx): atar la app solo a localhost (recomendado en producción)
+HOST=127.0.0.1
+
 # TTS: Speechify. Si está definido, se usan voces Carlos/Carmen.
 SPEECHIFY_API_KEY=your_api_key   # Opcional
 
@@ -208,12 +212,39 @@ Si existe `SPEECHIFY_API_KEY` se usa Speechify; si no, Google Cloud TTS o espeak
 
 ## Post-Deployment
 
-### SSL con Let's Encrypt
+### Proxy inverso y HTTPS (Nginx + Let's Encrypt)
+
+Para publicar la app con tu dominio y HTTPS hace falta un proxy inverso en la VM. Requisitos previos: dominio contratado, DNS apuntando a la IP pública de la VM, y puertos **80** y **443** abiertos en el firewall de la red (Google Cloud Console → VPC → Firewall, o `gcloud compute firewall-rules create`). La app sigue en el puerto 3000; Nginx escucha 80/443 y reenvía al backend.
+
+**Config versionada:** El repo incluye `deploy/nginx-listen-thread.conf` (solo HTTP en puerto 80). Certbot modificará ese archivo al ejecutar `certbot --nginx` para añadir el server 443 y la redirección HTTP→HTTPS.
+
+**Comandos en la VM** (sustituir `TU_DOMINIO` por tu dominio; el archivo debe estar en la VM, p. ej. tras un deploy en `/var/www/listen-thread/deploy/`):
 
 ```bash
-sudo apt-get install certbot python3-certbot-nginx
-sudo certbot --nginx -d tu-dominio.com
+# Instalar Nginx
+sudo apt-get update
+sudo apt-get install -y nginx
+
+# Copiar config y sustituir DOMINIO
+sudo cp /var/www/listen-thread/deploy/nginx-listen-thread.conf /etc/nginx/sites-available/listen-thread
+sudo sed -i 's/DOMINIO/TU_DOMINIO/g' /etc/nginx/sites-available/listen-thread
+
+# Activar site y quitar default
+sudo ln -sf /etc/nginx/sites-available/listen-thread /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+
+# Comprobar y recargar Nginx
+sudo nginx -t && sudo systemctl reload nginx
+
+# Certificado SSL (certbot modificará la config y añadirá HTTPS)
+sudo apt-get install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d TU_DOMINIO
+
+# Comprobar renovación automática
+sudo certbot renew --dry-run
 ```
+
+**Optimización para 1 GB RAM:** La config del site ya usa buffers de proxy reducidos. Opcionalmente en la VM puedes editar `/etc/nginx/nginx.conf` y poner `worker_processes 1;` y en `events { }` el valor `worker_connections 512;` (referencia en `deploy/nginx-main-snippet.conf`). Luego: `sudo nginx -t && sudo systemctl reload nginx`.
 
 ### Logs
 
