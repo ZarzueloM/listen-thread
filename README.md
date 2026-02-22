@@ -91,7 +91,7 @@ npm start
 
 Cada **push a la rama `main`** despliega automáticamente en una VM (p. ej. Google Cloud) mediante GitHub Actions (`.github/workflows/deploy.yml`). Se usa SSH, rsync y PM2 en la VM.
 
-Para configurar el deploy (VM, claves SSH, secrets de GitHub, setup único en la VM), consulta **[DEPLOYMENT.md](DEPLOYMENT.md)**.
+Para configurar el deploy (VM, claves SSH, secrets de GitHub, setup único en la VM), consulta **[DEPLOYMENT.md](DEPLOYMENT.md)**. Para publicar la web con tu dominio y HTTPS (proxy inverso Nginx + Let's Encrypt), sigue la sección "Proxy inverso y HTTPS" en DEPLOYMENT.md.
 
 ## API
 
