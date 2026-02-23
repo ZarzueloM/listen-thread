@@ -64,6 +64,11 @@ app.use(express.json());
 app.use(express.static(publicDir));
 app.use('/audio', express.static(audioDir));
 
+// Explicit root route to serve the web UI
+app.get('/', (req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
+
 // Ensure audio directory exists
 if (!fs.existsSync(audioDir)) {
   fs.mkdirSync(audioDir);
@@ -73,11 +78,6 @@ if (!fs.existsSync(audioDir)) {
 runCleanup(audioDir);
 const CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
 scheduleCleanup(CLEANUP_INTERVAL_MS, audioDir);
-
-// Explicit root route to serve the web UI
-app.get('/', (req, res) => {
-  res.sendFile(path.join(publicDir, 'index.html'));
-});
 
 // Map gender to Speechify voiceId (carmen / carlos)
 function getVoiceIdFromGender(gender) {

@@ -40,8 +40,42 @@
         .subtitle {
             color: #666;
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 8px;
             font-size: 0.95em;
+        }
+
+        .tagline {
+            color: #777;
+            text-align: center;
+            margin-bottom: 24px;
+            font-size: 0.9em;
+        }
+
+        .steps {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 28px;
+            flex-wrap: wrap;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.85em;
+            color: #666;
+        }
+
+        .step-icon {
+            font-size: 1.4em;
+        }
+
+        .hint {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 8px;
         }
 
         .input-group {
@@ -226,11 +260,27 @@
 
         .example {
             margin-top: 15px;
-            padding: 10px;
+            padding: 10px 12px;
             background: #f9f9f9;
             border-radius: 8px;
             font-size: 0.85em;
             color: #777;
+        }
+
+        .example-heading {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .example code {
+            font-size: 0.9em;
+            background: #eee;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
 
         .example strong {
@@ -275,9 +325,18 @@
         </div>
         <h1>🎧 Listen Thread</h1>
         <p id="i18n-subtitle" class="subtitle">Convierte hilos de X a audio</p>
+        <p id="i18n-tagline" class="tagline">Pega la URL de un hilo, elige la voz y escucha.</p>
+
+        <!-- Pasos 1-2-3 dejados comentados tras revisión visual
+        <div class="steps">
+            <div class="step"><span class="step-icon">🔗</span><span id="i18n-step1">Pegar URL</span></div>
+            <div class="step"><span class="step-icon">🎙️</span><span id="i18n-step2">Elegir voz</span></div>
+            <div class="step"><span class="step-icon">🎧</span><span id="i18n-step3">Escuchar</span></div>
+        </div>
+        -->
 
         <div class="input-group">
-            <label id="i18n-label-url" for="tweetUrl">URL del hilo en X:</label>
+            <label id="i18n-label-url" for="tweetUrl">Copia la URL del tweet/hilo en X y pégala aquí.</label>
             <div class="input-with-buttons">
                 <input 
                     type="text" 
@@ -290,7 +349,7 @@
         </div>
 
         <div class="input-group">
-            <label id="i18n-label-voice" for="voiceGender">Género de la voz:</label>
+            <label id="i18n-label-voice" for="voiceGender">Tipo de voz:</label>
             <select id="voiceGender">
                 <option value="male" selected>Masculino</option>
                 <option value="female">Femenino</option>
@@ -310,9 +369,7 @@
         </div>
 
         <div class="example">
-            <strong id="i18n-example-title">Ejemplo de URL válida:</strong><br>
-            https://x.com/usuario/status/1234567890<br><br>
-            <span id="i18n-example-note">Solo se aceptan URLs de hilos de X (`x.com`).</span>
+            <span id="i18n-example-note">Solo se aceptan URLs de hilos de X (x.com).</span>
         </div>
     </div>
 
@@ -323,11 +380,17 @@
             es: {
                 title: 'Listen Thread - X Thread to Speech',
                 subtitle: 'Convierte hilos de X a audio',
+                tagline: 'Pega la URL de un hilo, elige la voz y escucha.',
+                step1: 'Pegar URL',
+                step2: 'Elegir voz',
+                step3: 'Escuchar',
+                hintUrl: 'Copia la URL del tweet/hilo en X y pégala aquí.',
+                exampleHeading: 'Solo x.com',
                 labelUrl: 'URL del hilo en X:',
                 placeholderUrl: 'https://x.com/usuario/status/123456789...',
                 titleClearUrl: 'Limpiar URL',
                 titlePaste: 'Pegar desde el portapapeles',
-                labelVoiceGender: 'Género de la voz:',
+                labelVoiceGender: 'Tipo de voz:',
                 voiceMale: 'Masculino',
                 voiceFemale: 'Femenino',
                 btnConvert: 'Convertir a Audio',
@@ -342,17 +405,22 @@
                 audioGenerated: 'Audio Generado',
                 infoTweets: 'Tweets procesados:',
                 infoChunks: 'Chunks de audio:',
-                exampleTitle: 'Ejemplo de URL válida:',
-                exampleNote: 'Solo se aceptan URLs de hilos de X (`x.com`).'
+                exampleNote: 'Solo se aceptan URLs de hilos de X (x.com).'
             },
             en: {
                 title: 'Listen Thread - X Thread to Speech',
                 subtitle: 'Convert X threads to audio',
+                tagline: 'Paste a thread URL, choose a voice, and listen.',
+                step1: 'Paste URL',
+                step2: 'Choose voice',
+                step3: 'Listen',
+                hintUrl: 'Copy the tweet or thread URL from X and paste it here.',
+                exampleHeading: 'Only x.com',
                 labelUrl: 'Thread URL on X:',
                 placeholderUrl: 'https://x.com/usuario/status/123456789...',
                 titleClearUrl: 'Clear URL',
                 titlePaste: 'Paste from clipboard',
-                labelVoiceGender: 'Voice gender:',
+                labelVoiceGender: 'Voice type:',
                 voiceMale: 'Male',
                 voiceFemale: 'Female',
                 btnConvert: 'Convert to Audio',
@@ -367,7 +435,6 @@
                 audioGenerated: 'Audio Generated',
                 infoTweets: 'Tweets processed:',
                 infoChunks: 'Audio chunks:',
-                exampleTitle: 'Valid URL example:',
                 exampleNote: 'Only X thread URLs (x.com) are accepted.'
             }
         };
@@ -412,8 +479,16 @@
             document.title = t.title;
             var el = document.getElementById('i18n-subtitle');
             if (el) el.textContent = t.subtitle;
+            el = document.getElementById('i18n-tagline');
+            if (el) el.textContent = t.tagline;
+            el = document.getElementById('i18n-step1');
+            if (el) el.textContent = t.step1;
+            el = document.getElementById('i18n-step2');
+            if (el) el.textContent = t.step2;
+            el = document.getElementById('i18n-step3');
+            if (el) el.textContent = t.step3;
             el = document.getElementById('i18n-label-url');
-            if (el) el.textContent = t.labelUrl;
+            if (el) el.textContent = t.hintUrl;
             document.getElementById('tweetUrl').placeholder = t.placeholderUrl;
             document.getElementById('clearUrlBtn').title = t.titleClearUrl;
             document.getElementById('pasteUrlBtn').title = t.titlePaste;
@@ -428,8 +503,8 @@
             if (el) el.textContent = t.btnConvert;
             el = document.getElementById('i18n-audio-generated');
             if (el) el.textContent = '🎵 ' + t.audioGenerated;
-            el = document.getElementById('i18n-example-title');
-            if (el) el.textContent = t.exampleTitle;
+            el = document.getElementById('i18n-example-heading');
+            if (el) el.textContent = t.exampleHeading;
             el = document.getElementById('i18n-example-note');
             if (el) el.textContent = t.exampleNote;
         }
