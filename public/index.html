@@ -105,45 +105,53 @@
 
         .input-with-buttons {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
-            gap: 10px; /* Space between input and buttons */
+            gap: 10px;
         }
 
         .input-with-buttons input[type="text"] {
-            flex-grow: 1; /* Allow input to take available space */
+            flex: 1 1 200px;
+            min-width: 0;
         }
 
-        .icon-button {
-            width: 40px; /* Fixed width for icon buttons */
-            height: 40px; /* Fixed height for icon buttons */
-            padding: 0;
+        .url-actions {
             display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .url-action-btn {
+            padding: 10px 14px;
+            white-space: nowrap;
+            display: inline-flex;
             justify-content: center;
             align-items: center;
             background: #f0f0f0;
             color: #555;
             border: 1px solid #e0e0e0;
             border-radius: 10px;
-            font-size: 1.2em;
+            font-size: 0.95em;
+            font-weight: 500;
             cursor: pointer;
             transition: background 0.2s, color 0.2s, border-color 0.2s;
-            box-shadow: none; /* Remove default button shadow */
+            box-shadow: none;
         }
 
-        .icon-button:hover {
+        .url-action-btn:hover {
             background: #e0e0e0;
             color: #333;
             border-color: #ccc;
-            transform: none; /* Override general button hover effect */
-            box-shadow: none; /* Override general button hover effect */
+            transform: none;
+            box-shadow: none;
         }
 
-        .icon-button:active {
+        .url-action-btn:active {
             background: #d0d0d0;
             transform: none;
         }
 
-        .icon-button:disabled {
+        .url-action-btn:disabled {
             background: #ccc;
             cursor: not-allowed;
             color: #888;
@@ -343,8 +351,10 @@
                     id="tweetUrl" 
                     placeholder="https://x.com/usuario/status/123456789..."
                 />
-                <button id="clearUrlBtn" class="icon-button" title="Limpiar URL">✖</button>
-                <button id="pasteUrlBtn" class="icon-button" title="Pegar desde el portapapeles">📋</button>
+                <div class="url-actions">
+                    <button type="button" id="clearUrlBtn" class="url-action-btn" title="Limpiar URL">Limpiar</button>
+                    <button type="button" id="pasteUrlBtn" class="url-action-btn" title="Pegar desde el portapapeles">Pegar</button>
+                </div>
             </div>
         </div>
 
@@ -384,10 +394,12 @@
                 step1: 'Pegar URL',
                 step2: 'Elegir voz',
                 step3: 'Escuchar',
-                hintUrl: 'Copia la URL del tweet/hilo en X y pégala aquí.',
+                hintUrl: 'Copia la URL de X y pégala aquí.',
                 exampleHeading: 'Solo x.com',
                 labelUrl: 'URL del hilo en X:',
                 placeholderUrl: 'https://x.com/usuario/status/123456789...',
+                btnClear: 'Limpiar',
+                btnPaste: 'Pegar',
                 titleClearUrl: 'Limpiar URL',
                 titlePaste: 'Pegar desde el portapapeles',
                 labelVoiceGender: 'Tipo de voz:',
@@ -414,10 +426,12 @@
                 step1: 'Paste URL',
                 step2: 'Choose voice',
                 step3: 'Listen',
-                hintUrl: 'Copy the tweet or thread URL from X and paste it here.',
+                hintUrl: 'Copy the URL from X and paste it here.',
                 exampleHeading: 'Only x.com',
                 labelUrl: 'Thread URL on X:',
                 placeholderUrl: 'https://x.com/usuario/status/123456789...',
+                btnClear: 'Clear',
+                btnPaste: 'Paste',
                 titleClearUrl: 'Clear URL',
                 titlePaste: 'Paste from clipboard',
                 labelVoiceGender: 'Voice type:',
@@ -490,8 +504,10 @@
             el = document.getElementById('i18n-label-url');
             if (el) el.textContent = t.hintUrl;
             document.getElementById('tweetUrl').placeholder = t.placeholderUrl;
-            document.getElementById('clearUrlBtn').title = t.titleClearUrl;
-            document.getElementById('pasteUrlBtn').title = t.titlePaste;
+            el = document.getElementById('clearUrlBtn');
+            if (el) { el.textContent = t.btnClear; el.title = t.titleClearUrl; }
+            el = document.getElementById('pasteUrlBtn');
+            if (el) { el.textContent = t.btnPaste; el.title = t.titlePaste; }
             el = document.getElementById('i18n-label-voice');
             if (el) el.textContent = t.labelVoiceGender;
             var sel = document.getElementById('voiceGender');
