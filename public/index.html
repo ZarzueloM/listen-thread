@@ -414,6 +414,7 @@
                 statusErrorProcess: 'Error al procesar el hilo',
                 statusErrorNoTweets: 'No se encontraron tweets en el hilo',
                 statusErrorRateLimit: 'Demasiadas peticiones. Intenta de nuevo en 15 minutos.',
+                statusErrorServerHtml: 'El servidor respondió con una página de error; puede que la conversión haya tardado demasiado. Intenta de nuevo.',
                 audioGenerated: 'Audio Generado',
                 infoTweets: 'Tweets procesados:',
                 infoChunks: 'Chunks de audio:',
@@ -446,6 +447,7 @@
                 statusErrorProcess: 'Failed to process thread',
                 statusErrorNoTweets: 'No tweets found in thread',
                 statusErrorRateLimit: 'Too many requests. Please try again in 15 minutes.',
+                statusErrorServerHtml: 'The server responded with an error page; the conversion may have taken too long. Please try again.',
                 audioGenerated: 'Audio Generated',
                 infoTweets: 'Tweets processed:',
                 infoChunks: 'Audio chunks:',
@@ -575,7 +577,20 @@
                     body: JSON.stringify({ url, gender })
                 });
 
-                const data = await response.json();
+                const text = await response.text();
+                const contentType = (response.headers.get('Content-Type') || '').toLowerCase();
+                if (text.trim().startsWith('<') || !contentType.includes('application/json')) {
+                    showStatus('error', '✗ ' + t('statusErrorServerHtml'));
+                    return;
+                }
+
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseErr) {
+                    showStatus('error', '✗ ' + t('statusErrorServerHtml'));
+                    return;
+                }
 
                 if (!response.ok) {
                     var rawMsg = (data && data.error) || (data && data.message);
