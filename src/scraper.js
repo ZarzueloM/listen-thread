@@ -1,4 +1,4 @@
-const { chromium } = require('playwright');
+const { chromium } = require("playwright");
 
 /**
  * Scrapes a Twitter/X thread and extracts tweets from the original poster (OP)
@@ -11,19 +11,27 @@ async function scrapeThread(url) {
     // Launch browser
     browser = await chromium.launch({
       headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-blink-features=AutomationControlled",
+      ],
     });
 
     const context = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     });
 
     const page = await context.newPage();
-
+    // Forzar la eliminación de la propiedad navigator.webdriver
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+    });
     // Be more tolerant with Twitter/X behaviour:
     // - use 'domcontentloaded' instead of 'networkidle' (que casi nunca se cumple en X)
     // - aumentar timeout de navegación
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
 
     // Esperar de forma explícita a que aparezcan los tweets en pantalla
     await page.waitForSelector('[data-testid="tweet"]', { timeout: 30000 });
@@ -32,19 +40,21 @@ async function scrapeThread(url) {
     const opUsername = await page.evaluate(() => {
       const firstTweet = document.querySelector('[data-testid="tweet"]');
       if (!firstTweet) return null;
-      
-      const usernameElement = firstTweet.querySelector('[data-testid="User-Name"] a[role="link"]');
+
+      const usernameElement = firstTweet.querySelector(
+        '[data-testid="User-Name"] a[role="link"]',
+      );
       if (usernameElement) {
-        const href = usernameElement.getAttribute('href');
-        return href ? href.split('/')[1] : null;
+        const href = usernameElement.getAttribute("href");
+        return href ? href.split("/")[1] : null;
       }
       return null;
     });
 
-    console.log('OP Username:', opUsername);
+    console.log("OP Username:", opUsername);
 
     if (!opUsername) {
-      throw new Error('Could not identify original poster');
+      throw new Error("Could not identify original poster");
     }
 
     // Extract all tweets from the OP in the thread
@@ -52,16 +62,20 @@ async function scrapeThread(url) {
       const tweetElements = document.querySelectorAll('[data-testid="tweet"]');
       const texts = [];
 
-      tweetElements.forEach(tweet => {
+      tweetElements.forEach((tweet) => {
         // Check if this tweet is from the OP
-        const usernameElement = tweet.querySelector('[data-testid="User-Name"] a[role="link"]');
+        const usernameElement = tweet.querySelector(
+          '[data-testid="User-Name"] a[role="link"]',
+        );
         if (usernameElement) {
-          const href = usernameElement.getAttribute('href');
-          const tweetUsername = href ? href.split('/')[1] : null;
+          const href = usernameElement.getAttribute("href");
+          const tweetUsername = href ? href.split("/")[1] : null;
 
           if (tweetUsername === username) {
             // Extract tweet text
-            const tweetTextElement = tweet.querySelector('[data-testid="tweetText"]');
+            const tweetTextElement = tweet.querySelector(
+              '[data-testid="tweetText"]',
+            );
             if (tweetTextElement) {
               texts.push(tweetTextElement.innerText);
             }
@@ -74,11 +88,16 @@ async function scrapeThread(url) {
 
     await browser.close();
     return tweets;
-
   } catch (error) {
     if (browser) {
       await browser.close();
+      // Guarda una captura para inspeccionar desde la VPS
+      await page.screenshot({
+        path: "/var/www/listen-thread/debug.png",
+        fullPage: true,
+      });
     }
+
     throw new Error(`Failed to scrape thread: ${error.message}`);
   }
 }
